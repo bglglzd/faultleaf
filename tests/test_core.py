@@ -261,6 +261,47 @@ class DomainTests(unittest.TestCase):
 
 
 class InputTests(unittest.TestCase):
+    def test_non_open_requests_fail_before_writes_or_report_creation(self):
+        from faultleaf.cli import main
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, event in (("FL01", "E1"), ("FL16", "E2")):
+                for status in ("priority", "closed"):
+                    scenario = fixture(name)
+                    scenario["facts"][event]["status"] = status
+                    path = root / f"{name}-{status}.json"
+                    path.write_text(json.dumps(scenario), encoding="utf-8")
+                    output, error = io.StringIO(), io.StringIO()
+                    destination = root / f"{name}-{status}-report"
+                    with self.subTest(name=name, status=status), patch("sys.stdout", output), patch("sys.stderr", error), \
+                            patch("faultleaf.cli.compare") as execute:
+                        self.assertEqual(main(["replay", str(path), "--http", "--out", str(destination)]), 2)
+                        execute.assert_not_called()
+                        self.assertIn(path.name, error.getvalue())
+                        self.assertIn("Request status must be open", error.getvalue())
+                        self.assertEqual(output.getvalue(), "")
+                        self.assertFalse(destination.exists())
+
+    def test_control_typos_and_malformed_targets_are_input_errors(self):
+        from faultleaf.scenario import validate
+        changes = [
+            ("fact", lambda s: s["facts"]["E1"].update(note="ignored")),
+            ("schedule", lambda s: s["schedule"][0].update(tick=3)),
+            ("fault", lambda s: s["faults"][0].update(thru=s["faults"][0].pop("through"))),
+            ("mutation.target", lambda s: s["mutations"][0]["target"].pop("version")),
+            ("mutation.target", lambda s: s["mutations"][0]["target"].update(verison=1)),
+            ("mutation.target class", lambda s: s["mutations"][0]["target"].update({"class": []})),
+            ("mutation.target service", lambda s: s["mutations"][0]["target"].update(service="other")),
+            ("mutation.target rule", lambda s: s["mutations"][0]["target"].update(rule={})),
+            ("mutation.target lead_id", lambda s: s["mutations"][0]["target"].update(lead_id=[])),
+            ("mutation.target version", lambda s: s["mutations"][0]["target"].update(version=True)),
+        ]
+        for message, change in changes:
+            scenario = fixture("FL11")
+            change(scenario)
+            with self.subTest(message=message), self.assertRaisesRegex(ScenarioError, message):
+                validate(scenario)
+
     def test_reopening_operator_events_are_rejected_by_the_declared_close_only_profile(self):
         from faultleaf.scenario import validate
         for status in ("open", "priority"):

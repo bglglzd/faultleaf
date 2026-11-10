@@ -79,6 +79,12 @@ def _objects(value, label, maximum):
     return value
 
 
+def _fields(value, allowed, label):
+    unknown = set(value) - allowed
+    if unknown:
+        raise ScenarioError(f"{label} contains unknown fields: {', '.join(sorted(unknown))}")
+
+
 def _identifiers(value, label, maximum):
     if not isinstance(value, list) or len(value) > maximum:
         raise ScenarioError(f"{label} must be a list of at most {maximum} identifiers")
@@ -141,6 +147,8 @@ def validate(document):
         _identifier(event_id, "fact ID")
         if not isinstance(fact, dict):
             raise ScenarioError("Each fact must be an object")
+        _fields(fact, {"event_id", "lead_id", "version", "type", "status", "slot", "display_name"},
+                f"fact {event_id}")
         fact.setdefault("event_id", event_id)
         if fact["event_id"] != event_id:
             raise ScenarioError("fact key and event_id differ")
@@ -152,6 +160,8 @@ def validate(document):
             raise ScenarioError("Unknown status")
         if fact["type"] == "operator" and fact["status"] != "closed":
             raise ScenarioError("Operator events support closing a lead; reopening is outside the v0.1 profile")
+        if fact["type"] == "request" and fact["status"] != "open":
+            raise ScenarioError("Request status must be open; status changes require an operator event")
         for key in ("slot", "display_name"):
             if not isinstance(fact.get(key), str) or len(fact[key]) > 160:
                 raise ScenarioError(f"{key} must be short text")
@@ -162,6 +172,7 @@ def validate(document):
         business[identity] = semantic
     seen, deliveries = set(), {}
     for step in _objects(data.get("schedule"), "schedule", 64):
+        _fields(step, {"token_id", "action", "at", "after", "pinned", "event", "delivery_id"}, "schedule step")
         _identifier(step.get("token_id"), "token_id")
         if step["token_id"] in seen:
             raise ScenarioError("Duplicate schedule token")
@@ -209,6 +220,8 @@ def validate(document):
                 raise ScenarioError("delivery_id is reused with conflicting business content")
     seen = set()
     for fault in _objects(data.get("faults", []), "faults", 24):
+        _fields(fault, {"id", "service", "operation", "lead_id", "version", "occurrence", "mode",
+                        "retry_after", "through"}, "fault")
         _identifier(fault.get("id"), "fault id")
         if fault["id"] in seen:
             raise ScenarioError("Duplicate fault ID")
@@ -253,6 +266,16 @@ def validate(document):
         _identifier(mutation.get("variant"), "mutation.variant")
         if mutation.get("variant") not in VARIANTS - {"candidate"} or not isinstance(mutation.get("target"), dict):
             raise ScenarioError("Unknown mutation or missing target signature")
+        target = mutation["target"]
+        if set(target) != {"class", "rule", "service", "lead_id", "version"}:
+            raise ScenarioError("mutation.target requires exactly class, rule, service, lead_id and version")
+        if target["class"] not in ("duplicate_effect", "missing_effect", "stale_overwrite", "false_success"):
+            raise ScenarioError("Unknown mutation.target class")
+        if target["service"] not in (*SERVICES, "worker"):
+            raise ScenarioError("Unknown mutation.target service")
+        _identifier(target["rule"], "mutation.target rule")
+        _identifier(target["lead_id"], "mutation.target lead_id")
+        _integer(target["version"], "mutation.target version", 1_000_000)
     reduction = data.setdefault("reduction", {"eligible": False, "required_fault_ids": [], "pinned_facts": []})
     if not isinstance(reduction, dict) or type(reduction.get("eligible", False)) is not bool:
         raise ScenarioError("reduction requires an object with boolean eligible")

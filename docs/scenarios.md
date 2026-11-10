@@ -22,6 +22,8 @@ Each file is self-contained: authoritative facts, initial CRM/calendar/notificat
 
 Expected service rows describe current active/queued state. Active flags are implicit in the service projection; opaque generated IDs are not literal expectations. Only supplied row fields are matched. Operator tags are preserved. Request facts carry `status: open`; the worker must preserve operator-owned priority/closed state when applying a normal request. The close fact uses the request's display name and slot, with `status: closed`. The existing FL22 contact defaults to `display_name: Alex Example` at version 0. Every notification is a synthetic queue record, never an external send.
 
+Unknown fact, schedule-step and fault fields are rejected, so a misspelled `through` cannot silently change an outage window. Each mutation target requires exactly `class`, `rule`, `service`, `lead_id` and integer `version`; classes are `duplicate_effect`, `missing_effect`, `stale_overwrite` or `false_success`, and services are `crm`, `calendar`, `notifications` or `worker`.
+
 `E1_equivalent` in FL03 is a distinct event ID with the same lead/version/payload as E1. It is optional delivery noise, not another pinned authoritative revision. The fixtures do not reuse one event ID with conflicting payload.
 
 ## Logical barriers and faults

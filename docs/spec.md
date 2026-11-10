@@ -4,7 +4,7 @@ User: an automation engineer checking one lead-to-appointment integration. Load 
 
 ## Domain
 
-Each immutable fact has `event_id`, `lead_id`, integer `version`, `slot`, `display_name` and `status` (`open`, `priority`, `closed`). Normal requests preserve operator-owned status/tags. A higher-version operator close cancels an active synthetic booking and withdraws the queued confirmation. A later normal request cannot reopen an operator-closed lead. Rescheduling retains one active booking/current queue item. No notification is actually sent.
+Each immutable fact has `event_id`, `lead_id`, integer `version`, `slot`, `display_name`, `type` and `status`. Request facts require `status: open`; operator facts require `status: closed`. Normal requests preserve operator-owned status/tags, including preexisting priority state. A higher-version operator close cancels an active synthetic booking and withdraws the queued confirmation. A later normal request cannot reopen an operator-closed lead. Rescheduling retains one active booking/current queue item. No notification is actually sent.
 
 The v0.1 operator-event profile supports closing only. Explicit reopening is rejected during input validation; initial priority/status/tags are preserved. This bounded cancellation process does not model a complete CRM lifecycle.
 
