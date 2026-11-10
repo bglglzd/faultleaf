@@ -1,0 +1,12 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 32 32"
+  role="img"
+  aria-label="Faultleaf mark"
+>
+  <path
+    fill="#1c2d25"
+    fill-rule="evenodd"
+    d="M7 4h12l6 6v11a7 7 0 0 1-7 7H7V4Zm4 7v13h3v-5h5v-3h-5v-2h7v-3H11Z"
+  />
+</svg>

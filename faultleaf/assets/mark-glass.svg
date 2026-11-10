@@ -1,0 +1,29 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 48 48"
+  role="img"
+  aria-label="Faultleaf app mark"
+>
+  <defs>
+    <linearGradient id="tile" x1="0" x2="0" y2="1">
+      <stop stop-color="#fbfdf8" />
+      <stop offset="1" stop-color="#dce6d7" />
+    </linearGradient>
+  </defs>
+  <rect
+    x="1"
+    y="1"
+    width="46"
+    height="46"
+    rx="12"
+    fill="url(#tile)"
+    stroke="#cbd8c5"
+  />
+  <path d="M12 3h24" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+  <path
+    transform="translate(8 8)"
+    fill="#1c2d25"
+    fill-rule="evenodd"
+    d="M7 4h12l6 6v11a7 7 0 0 1-7 7H7V4Zm4 7v13h3v-5h5v-3h-5v-2h7v-3H11Z"
+  />
+</svg>

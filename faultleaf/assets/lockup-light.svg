@@ -1,0 +1,23 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 164 40"
+  role="img"
+  aria-label="Faultleaf"
+>
+  <path
+    transform="translate(0 4)"
+    fill="#1c2d25"
+    fill-rule="evenodd"
+    d="M7 4h12l6 6v11a7 7 0 0 1-7 7H7V4Zm4 7v13h3v-5h5v-3h-5v-2h7v-3H11Z"
+  />
+  <text
+    x="42"
+    y="27"
+    font-family="system-ui,sans-serif"
+    font-weight="600"
+    font-size="23"
+    fill="#1c2d25"
+  >
+    faultleaf
+  </text>
+</svg>
