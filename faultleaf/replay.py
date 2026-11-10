@@ -72,7 +72,9 @@ class Engine:
                     return
                 if self.variant == "M04_no_manual_fence":
                     return
-            self.worker.receive(fact, step.get("delivery_id", "operator-" + fact["event_id"]), self.tick)
+            # External delivery IDs cannot contain ':', so operator receipts have
+            # a separate namespace and cannot conflict with a valid webhook ID.
+            self.worker.receive(fact, step.get("delivery_id", "operator:" + fact["event_id"]), self.tick)
         elif step["action"] == "restart_worker":
             self.restart_requested = True
 

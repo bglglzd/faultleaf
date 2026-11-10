@@ -23,6 +23,7 @@ def fixture(name):
 class DomainTests(unittest.TestCase):
     def test_redelivery_after_operator_close_preserves_receipt_and_closed_state(self):
         scenario = fixture("FL01")
+        scenario["schedule"][0]["delivery_id"] = "operator-C2"
         scenario["facts"]["C2"] = dict(scenario["facts"]["E1"], event_id="C2", version=2,
                                        status="closed", type="operator")
         scenario["facts"]["E3"] = dict(scenario["facts"]["E1"], event_id="E3", version=3)
@@ -40,6 +41,45 @@ class DomainTests(unittest.TestCase):
                 self.assertTrue(result["passed"], result["violations"])
                 self.assertEqual(result["claims"][0]["state"], "blocked")
                 self.assertEqual(len([e for e in result["timeline"] if e["kind"] == "delivery_received"]), 4)
+                self.assertTrue(any(row["version"] == 1 and row["status"] == "open" and not row["active"]
+                                    for row in result["state"]["crm"]["items"]))
+                for service in ("calendar", "notifications"):
+                    noops = [row for row in result["state"][service]["effects"] if row.get("effect") == "noop"]
+                    self.assertTrue(noops)
+                    self.assertTrue(all(row["before"] == row["after"] == [] and row["kind"] == "operation_noop"
+                                        for row in noops))
+
+    def test_preempted_after_commit_fault_cannot_satisfy_reducer_context(self):
+        scenario = fixture("FL07")
+        scenario["faults"].append(dict(id="LOST_ACK", service="crm", operation="ensure_contact",
+            lead_id="L1", version=1, occurrence=2, mode="timeout_after_commit"))
+        scenario["reduction"]["required_fault_ids"].append("LOST_ACK")
+        for http in (False, True):
+            with self.subTest(http=http):
+                candidate = replay(scenario, http=http)
+                self.assertTrue(candidate["passed"], candidate["violations"])
+                lost = next(e for e in candidate["timeline"] if e["kind"] == "fault_injected"
+                            and e["detail"]["id"] == "LOST_ACK")
+                self.assertGreater(lost["seq"], candidate["state"]["crm"]["effects"][0]["seq"])
+                unsafe = replay(scenario, "M06_ignore_retry_after_and_exhaust_budget", http=http)
+                self.assertFalse(unsafe["valid"])
+                self.assertIn("LOST_ACK", unsafe["unreached_faults"])
+                self.assertEqual(unsafe["state"]["crm"]["effects"], [])
+                self.assertFalse(any(e["kind"] == "fault_injected" and e["detail"]["id"] == "LOST_ACK"
+                                     for e in unsafe["timeline"]))
+        self.assertEqual(reduce_failure(scenario)["status"], "target_not_reproduced")
+
+    def test_idempotency_hit_does_not_inject_selected_after_commit_fault(self):
+        scenario = fixture("FL04")
+        scenario["faults"].append(dict(id="NO_COMMIT", service="crm", operation="ensure_contact",
+            lead_id="L1", version=1, occurrence=2, mode="crash_worker_after_commit_before_checkpoint"))
+        result = replay(scenario, http=True)
+        self.assertFalse(result["valid"])
+        self.assertIn("NO_COMMIT", result["unreached_faults"])
+        self.assertFalse(any(e["kind"] == "worker_crash" for e in result["timeline"]))
+        self.assertEqual(len(result["state"]["crm"]["effects"]), 1)
+        self.assertTrue(any(e["kind"] == "fault_not_applied" and e["detail"].get("reason") == "idempotency_hit"
+                            for e in result["timeline"]))
 
     def test_nonadvancing_manual_edit_is_harness_error_at_and_after_commit(self):
         for http in (False, True):
@@ -211,6 +251,12 @@ class InputTests(unittest.TestCase):
             with self.assertRaisesRegex(ScenarioError, r"broken.yaml: Invalid YAML at line \d+, column \d+"):
                 load(path)
 
+    def test_date_and_large_scalar_diagnostics_identify_the_input_location(self):
+        with self.assertRaisesRegex(ScenarioError, "line 1, column 7 must be quoted"):
+            loads("slot: 2030-01-01\n")
+        with self.assertRaisesRegex(ScenarioError, "Invalid scalar for horizon at line 1, column 10"):
+            loads("horizon: " + "1" * 5000 + "\n")
+
     def test_cli_distinguishes_checks_from_pending_complete_or_blocked_business_state(self):
         from faultleaf.cli import main
         with tempfile.TemporaryDirectory() as temporary:
@@ -251,12 +297,23 @@ class InputTests(unittest.TestCase):
                        lambda s: s["expected"].update(services=[]),
                        lambda s: s["expected"].pop("services"),
                        lambda s: s["facts"]["E1"].pop("status"),
+                       lambda s: s["initial"].update(unexpected="note"),
+                       lambda s: s["schedule"][0].update(event={}),
+                       lambda s: s["reduction"].update(pinned_facts=[{}]),
+                       lambda s: s["reduction"].update(required_fault_ids=[{}]),
                        lambda s: s["schedule"][0].update(pinned=False),
                        lambda s: s["facts"]["E1"].update(lead_id="../../file")):
             scenario = fixture("FL01")
             mutate(scenario)
             with self.assertRaises(ScenarioError):
                 validate(scenario)
+
+    def test_conflicting_delivery_id_is_rejected_before_execution(self):
+        from faultleaf.scenario import validate
+        scenario = fixture("FL16")
+        scenario["schedule"][1]["delivery_id"] = "D1"
+        with self.assertRaisesRegex(ScenarioError, "delivery_id is reused"):
+            validate(scenario)
 
 
 if __name__ == "__main__":

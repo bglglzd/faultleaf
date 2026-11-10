@@ -1189,7 +1189,7 @@
           for (const key of SERVICES) {
             const rows = run.state && run.state[key] && run.state[key][field];
             if (!Array.isArray(rows)) return null;
-            total += rows.length;
+            total += field === "effects" ? rows.filter((row) => row.effect !== "noop").length : rows.length;
           }
           return total;
         }

@@ -52,4 +52,6 @@ The optional [n8n adapter](docs/n8n.md) uses a fixed export of explicit HTTP nod
 
 One synthetic process and three intentionally inspectable APIs. This is not a general production trace replayer, CRM or arbitrary-workflow chaos platform. Idempotent effects are demonstrated within these APIs; exactly-once delivery and external vendor compatibility are not claimed. Pending work beyond the declared horizon is a valid result, distinct from success. The offline HTML viewer imports local saved reports; it does not execute workflows in a browser.
 
+Offline reports are bounded to 2 MiB and 2000 records per list, with additional shape limits. The CLI rejects output beyond viewer limits before writing it. Reduce the horizon for HTML output; the Python `replay()` API returns the raw state for larger inspections.
+
 [Architecture and API](docs/architecture.md) · [Acceptance specification](docs/spec.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [MIT license](LICENSE)

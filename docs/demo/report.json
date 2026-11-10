@@ -62,7 +62,7 @@
           ],
           "effects": [
             {
-              "seq": 9,
+              "seq": 8,
               "tick": 0,
               "kind": "effect_committed",
               "service": "crm",
@@ -381,19 +381,6 @@
         {
           "seq": 8,
           "tick": 0,
-          "kind": "fault_injected",
-          "service": "crm",
-          "operation": "ensure_contact",
-          "lead_id": "L1",
-          "version": 1,
-          "detail": {
-            "id": "FL04_F1",
-            "mode": "timeout_after_commit"
-          }
-        },
-        {
-          "seq": 9,
-          "tick": 0,
           "kind": "effect_committed",
           "service": "crm",
           "operation": "ensure_contact",
@@ -402,6 +389,19 @@
           "detail": {
             "effect": "create",
             "key": null
+          }
+        },
+        {
+          "seq": 9,
+          "tick": 0,
+          "kind": "fault_injected",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "id": "FL04_F1",
+            "mode": "timeout_after_commit"
           }
         },
         {
@@ -599,7 +599,7 @@
       ],
       "unreached_tokens": [],
       "restart_scope": "worker_instance_reopen; not OS process evidence",
-      "canonical_digest": "93db9c062a6014bcf229a69435c9c55260cb521a7906a4c0d2fe03748febfe68"
+      "canonical_digest": "2ce68209230252c1f9f2937847ee9f4469c15112545276bc1251b2809775b0c4"
     },
     "candidate": {
       "variant": "candidate",
@@ -645,7 +645,7 @@
           ],
           "effects": [
             {
-              "seq": 9,
+              "seq": 8,
               "tick": 0,
               "kind": "effect_committed",
               "service": "crm",
@@ -916,19 +916,6 @@
         {
           "seq": 8,
           "tick": 0,
-          "kind": "fault_injected",
-          "service": "crm",
-          "operation": "ensure_contact",
-          "lead_id": "L1",
-          "version": 1,
-          "detail": {
-            "id": "FL04_F1",
-            "mode": "timeout_after_commit"
-          }
-        },
-        {
-          "seq": 9,
-          "tick": 0,
           "kind": "effect_committed",
           "service": "crm",
           "operation": "ensure_contact",
@@ -937,6 +924,19 @@
           "detail": {
             "effect": "create",
             "key": "crm:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 9,
+          "tick": 0,
+          "kind": "fault_injected",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "id": "FL04_F1",
+            "mode": "timeout_after_commit"
           }
         },
         {
@@ -1101,7 +1101,7 @@
       "violations": [],
       "unreached_tokens": [],
       "restart_scope": "worker_instance_reopen; not OS process evidence",
-      "canonical_digest": "d8b5084ad685bce132d91d352ad56e6def8ac0f243afd282ed6b24a84fc0556a"
+      "canonical_digest": "53deefd8fbe09e662d4bf54c7b1b4b024099528641d2638a0507f932246af729"
     }
   },
   "reduction": {
@@ -1128,8 +1128,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "93db9c062a6014bcf229a69435c9c55260cb521a7906a4c0d2fe03748febfe68",
-        "candidate_digest": "d8b5084ad685bce132d91d352ad56e6def8ac0f243afd282ed6b24a84fc0556a"
+        "unsafe_digest": "2ce68209230252c1f9f2937847ee9f4469c15112545276bc1251b2809775b0c4",
+        "candidate_digest": "53deefd8fbe09e662d4bf54c7b1b4b024099528641d2638a0507f932246af729"
       },
       {
         "pair": 2,
@@ -1140,8 +1140,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "1454fe9a9151e83d10eea41a85ce64fa5f05ab0af7484082f346c0238c909f92",
-        "candidate_digest": "f80758a356f6dd69566f2773fdd05a0bb75d6a62584693d07a2346183635b289"
+        "unsafe_digest": "6dd500b7c1296778192b3eb49ca2dba098c3f21f57d14ee108421db74fa38da9",
+        "candidate_digest": "51707c0c2f857ff61581facc8c164304ab26b7f592222e696b5875951c6220c0"
       },
       {
         "pair": 3,
@@ -1151,8 +1151,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "1b31e66959cc88e6f3ca30147fdc6221397ab1a2ea58f25366cc10e0c435af70",
-        "candidate_digest": "a3facd2054e3231e39f194a80cfa7c839f0bb832f3e906592bec42d8b09d614e"
+        "unsafe_digest": "f8666cbd0a859281691dc53e3b51e41fc8eec5757c61700b76b95f940c4d9520",
+        "candidate_digest": "25a62b29ac9d0b81f95cf88c237fcacc945f5aa6e34427bc04a881a972cb23e9"
       },
       {
         "pair": 4,
@@ -1161,8 +1161,8 @@
           "FL04_S1",
           "WAKE12"
         ],
-        "unsafe_digest": "74c0eba523f0df5a537ac6c4f329eda2c45dc644f62ac3fba41ffe1a7c9e28fa",
-        "candidate_digest": "4fe7ca747d385620e08cf2815c6497bd0fbbb907de1068135cfe850bd4ffadbc"
+        "unsafe_digest": "37c501f68a88cea6d5073ae4ae75f492ded88d8d4265df962da04731344d5bae",
+        "candidate_digest": "08644b7107bc82314e7b92fc256a652eedce62219be496fb9d3e43cbad21ac86"
       },
       {
         "pair": 5,
@@ -1170,8 +1170,8 @@
         "tokens": [
           "FL04_S1"
         ],
-        "unsafe_digest": "b98d6d793834cf6322998d88246d57ac0404ef6d47a1120747e4cf3228b2ca1f",
-        "candidate_digest": "45508a8c3a914d62c298274eb47a26c145a26c34c330b8fc9e9e6d0669ac6c56"
+        "unsafe_digest": "342db19e8cef3f551fa619b30907e94dfceb4876960a4ec695b1574aca909119",
+        "candidate_digest": "c73a77ec4c2be50d963e2990f630683c8931623294b6757e4c838c852b7c87ae"
       }
     ],
     "scenario": {

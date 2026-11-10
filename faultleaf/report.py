@@ -13,6 +13,22 @@ def _encoded(report: dict) -> str:
     raw = json.dumps(report, ensure_ascii=False, allow_nan=False, indent=2)
     if len(raw.encode("utf-8")) > MAX_REPORT_BYTES:
         raise ValueError("Report exceeds the 2 MiB viewer limit")
+    pending, nodes = [(report, 0)], 0
+    while pending:
+        value, depth = pending.pop()
+        nodes += 1
+        if nodes > 25000 or depth > 32:
+            raise ValueError("Report exceeds the viewer shape limit; reduce the replay horizon")
+        if isinstance(value, list):
+            if len(value) > 2000:
+                raise ValueError("Report list exceeds 2000 viewer records; reduce the replay horizon")
+            pending.extend((child, depth + 1) for child in value)
+        elif isinstance(value, dict):
+            if len(value) > 200:
+                raise ValueError("Report object exceeds 200 viewer fields")
+            pending.extend((child, depth + 1) for child in value.values())
+        elif isinstance(value, str) and len(value) > 262144:
+            raise ValueError("Report string exceeds the 256 KiB viewer limit")
     return raw
 
 

@@ -42,11 +42,25 @@ def _mapping(loader, node, deep=False):
         key = loader.construct_object(key_node, deep=deep)
         if not isinstance(key, str) or key in result:
             raise ScenarioError("Mapping keys must be unique strings")
-        result[key] = loader.construct_object(value_node, deep=deep)
+        try:
+            result[key] = loader.construct_object(value_node, deep=deep)
+        except ScenarioError:
+            raise
+        except ValueError as exc:
+            mark = value_node.start_mark
+            raise ScenarioError(f"Invalid scalar for {key} at line {mark.line + 1}, column {mark.column + 1}") from exc
     return result
 
 
 _Loader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
+
+
+def _timestamp(loader, node):
+    mark = node.start_mark
+    raise ScenarioError(f"YAML date/time at line {mark.line + 1}, column {mark.column + 1} must be quoted as text")
+
+
+_Loader.add_constructor("tag:yaml.org,2002:timestamp", _timestamp)
 
 
 def _integer(value, label, maximum=1000):
@@ -63,6 +77,16 @@ def _objects(value, label, maximum):
     if not isinstance(value, list) or len(value) > maximum or any(not isinstance(x, dict) for x in value):
         raise ScenarioError(f"{label} must contain at most {maximum} objects")
     return value
+
+
+def _identifiers(value, label, maximum):
+    if not isinstance(value, list) or len(value) > maximum:
+        raise ScenarioError(f"{label} must be a list of at most {maximum} identifiers")
+    for item in value:
+        _identifier(item, label)
+    if len(set(value)) != len(value):
+        raise ScenarioError(f"{label} contains duplicates")
+    return set(value)
 
 
 def _data_tree(value):
@@ -134,7 +158,7 @@ def validate(document):
         if identity in business and business[identity] != semantic:
             raise ScenarioError("Conflicting facts share one lead/version")
         business[identity] = semantic
-    seen = set()
+    seen, deliveries = set(), {}
     for step in _objects(data.get("schedule"), "schedule", 64):
         _identifier(step.get("token_id"), "token_id")
         if step["token_id"] in seen:
@@ -167,6 +191,7 @@ def validate(document):
         if type(step.get("pinned", False)) is not bool:
             raise ScenarioError("pinned must be a boolean")
         if step["action"] in ("deliver", "manual_status"):
+            _identifier(step.get("event"), "schedule event")
             if step.get("event") not in facts:
                 raise ScenarioError("Schedule references an unknown fact")
             required_type = "operator" if step["action"] == "manual_status" else "request"
@@ -174,6 +199,10 @@ def validate(document):
                 raise ScenarioError(f"{step['action']} requires a {required_type} fact")
         if step["action"] == "deliver":
             _identifier(step.get("delivery_id"), "delivery_id")
+            body = intent(facts[step["event"]])
+            previous = deliveries.setdefault(step["delivery_id"], body)
+            if previous != body:
+                raise ScenarioError("delivery_id is reused with conflicting business content")
     seen = set()
     for fault in _objects(data.get("faults", []), "faults", 24):
         _identifier(fault.get("id"), "fault id")
@@ -198,6 +227,8 @@ def validate(document):
     expected = data.get("expected")
     if not isinstance(initial, dict) or not isinstance(expected, dict):
         raise ScenarioError("initial and expected must be objects")
+    if not set(initial) <= set(SERVICES):
+        raise ScenarioError("initial contains an unknown service; expected crm, calendar, notifications")
     if not isinstance(expected.get("services"), dict) or set(expected["services"]) != set(SERVICES):
         raise ScenarioError("expected.services must define all three services")
     for service in SERVICES:
@@ -218,12 +249,16 @@ def validate(document):
         if mutation.get("variant") not in VARIANTS - {"candidate"} or not isinstance(mutation.get("target"), dict):
             raise ScenarioError("Unknown mutation or missing target signature")
     reduction = data.setdefault("reduction", {"eligible": False, "required_fault_ids": [], "pinned_facts": []})
-    if not isinstance(reduction, dict) or not set(reduction.get("required_fault_ids", [])) <= seen:
+    if not isinstance(reduction, dict) or type(reduction.get("eligible", False)) is not bool:
+        raise ScenarioError("reduction requires an object with boolean eligible")
+    required_faults = _identifiers(reduction.get("required_fault_ids", []), "required_fault_ids", 24)
+    pinned_facts = _identifiers(reduction.get("pinned_facts", []), "pinned_facts", 32)
+    if not required_faults <= seen:
         raise ScenarioError("Reduction requires an unknown fault")
-    if not isinstance(reduction.get("pinned_facts", []), list) or not set(reduction.get("pinned_facts", [])) <= set(facts):
+    if not pinned_facts <= set(facts):
         raise ScenarioError("Reduction pins an unknown fact")
     anchors = {s.get("event") for s in data["schedule"] if s.get("pinned")}
-    if not set(reduction.get("pinned_facts", [])) <= anchors:
+    if not pinned_facts <= anchors:
         raise ScenarioError("Each pinned fact requires a pinned activation token")
     return data
 

@@ -163,6 +163,20 @@ class ReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "2 MiB"):
             render_report(report)
 
+    def test_writer_rejects_below_byte_limit_report_outside_viewer_shape_before_writing(self):
+        report = example_report()
+        report["runs"]["candidate"]["timeline"] = [{"tick": i} for i in range(2001)]
+        self.assertLess(len(json.dumps(report).encode()), 2 * 1024 * 1024)
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "not-written"
+            with self.assertRaisesRegex(ValueError, "2000 viewer records"):
+                write_report(report, target)
+            self.assertFalse(target.exists())
+        report = example_report()
+        report["metadata"] = {str(i): i for i in range(201)}
+        with self.assertRaisesRegex(ValueError, "200 viewer fields"):
+            render_report(report)
+
     def test_missing_optional_evidence_still_produces_a_viewable_document(self):
         report = {"schema_version": 1, "scenario": {"id": "partial"}, "runs": {"candidate": {}}}
         html = render_report(report)

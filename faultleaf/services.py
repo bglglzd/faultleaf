@@ -86,7 +86,10 @@ class Store:
                 self.data["items"].append(row)
             else:
                 for row in rows:
-                    row.update(version=fact["version"], status=fact["status"])
+                    row["active"] = False
+                    edited = deepcopy(row)
+                    edited.update(version=fact["version"], status=fact["status"], active=True)
+                    self.data["items"].append(edited)
             entry = self.record("operator_edit", service=self.service, lead_id=fact["lead_id"],
                                 version=fact["version"], tick=tick, detail={"status": fact["status"]})
             self.data["effects"].append({**entry, "operation": "operator_edit", "before": before,
@@ -118,14 +121,15 @@ class Store:
             window = self.data["windows"].get(signature, 0)
             if tick < window:
                 outcome, retry_after = "rate_limited", window - tick
+                self._record_fault(fault, meta, applied=False, reason="existing_rate_window")
             elif fault and fault["mode"] == "rate_limit_before_commit":
                 retry_after = max(1, fault.get("retry_after", 1))
                 self.data["windows"][signature] = tick + retry_after
                 outcome = "rate_limited"
+                self._record_fault(fault, meta)
             elif fault and fault["mode"] == "unavailable_before_commit":
                 outcome = "unavailable"
-            if fault:
-                self.record("fault_injected", **meta, detail={"id": fault["id"], "mode": fault["mode"]})
+                self._record_fault(fault, meta)
             if outcome:
                 attempt["outcome"] = outcome
                 self.record(outcome, **meta, detail={"retry_after": retry_after})
@@ -145,6 +149,7 @@ class Store:
                     attempt["outcome"] = "idempotency_hit"
                     self.record("idempotency_hit", **meta, detail={"key": key})
                     self._save()
+                    self._record_fault(fault, meta, applied=False, reason="idempotency_hit")
                     return deepcopy(old["response"])
                 active = [i for i in self.data["items"] if i["lead_id"] == lead and i["active"]]
                 before = deepcopy(active)
@@ -155,7 +160,7 @@ class Store:
                 if method == "DELETE":
                     for item in active:
                         item["active"] = False
-                    effect_kind = "cancel" if self.service == "calendar" else "withdraw"
+                    effect_kind = ("cancel" if self.service == "calendar" else "withdraw") if active else "noop"
                 else:
                     new = {k: body[k] for k in ("lead_id", "version", "slot", "display_name", "status")}
                     for reference in ("crm_id", "booking_id"):
@@ -179,7 +184,8 @@ class Store:
                     new["active"] = True
                     self.data["items"].append(new)
                 after = deepcopy([i for i in self.data["items"] if i["lead_id"] == lead and i["active"]])
-                entry = self.record("effect_committed", **meta, detail={"effect": effect_kind, "key": key})
+                entry = self.record("operation_noop" if effect_kind == "noop" else "effect_committed",
+                                    **meta, detail={"effect": effect_kind, "key": key})
                 self.data["effects"].append({**entry, "operation": operation, "effect": effect_kind,
                                              "before": before, "after": after})
                 response = {"items": after, "effect": effect_kind}
@@ -187,8 +193,10 @@ class Store:
                     self.data["keys"][key] = {"fingerprint": fingerprint, "response": response}
                 attempt["outcome"] = "committed"
                 self._save()
+                if fault and fault["mode"] in ("timeout_after_commit", "crash_worker_after_commit_before_checkpoint"):
+                    self._record_fault(fault, meta)
         # Authored barriers run only after the service transaction has committed.
-        self.barrier({**meta, "point": outcome or "effect_committed"})
+        self.barrier({**meta, "point": outcome or ("operation_noop" if effect_kind == "noop" else "effect_committed")})
         if outcome:
             raise ServiceError(429 if outcome == "rate_limited" else 503, outcome, retry_after)
         if fault and fault["mode"] == "timeout_after_commit":
@@ -196,6 +204,14 @@ class Store:
         if fault and fault["mode"] == "crash_worker_after_commit_before_checkpoint":
             raise WorkerCrash()
         return response
+
+    def _record_fault(self, fault, meta, applied=True, reason=None):
+        if fault is None:
+            return
+        detail = {"id": fault["id"], "mode": fault["mode"]}
+        if reason:
+            detail["reason"] = reason
+        self.record("fault_injected" if applied else "fault_not_applied", **meta, detail=detail)
 
 
 class MemoryTransport:
