@@ -99,6 +99,8 @@ def validate(document):
             or document["schema_version"] != 1):
         raise ScenarioError("Expected scenario schema_version: 1")
     data = deepcopy(document)
+    data.setdefault("faults", [])
+    data.setdefault("mutations", [])
     _identifier(data.get("id"), "id")
     if not isinstance(data.get("title"), str) or len(data["title"]) > 160:
         raise ScenarioError("title must be text of at most 160 characters")
@@ -193,6 +195,7 @@ def validate(document):
     if not isinstance(expected.get("services"), dict) or set(expected["services"]) != set(SERVICES):
         raise ScenarioError("expected.services must define all three services")
     for service in SERVICES:
+        initial.setdefault(service, [])
         for row in _objects(initial.get(service, []), "initial service rows", 32):
             _identifier(row.get("lead_id"), "initial lead")
             _integer(row.get("version"), "initial version", 1_000_000)

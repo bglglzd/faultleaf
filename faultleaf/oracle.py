@@ -11,6 +11,39 @@ def signature(violation):
     return {key: violation[key] for key in ("class", "rule", "service", "lead_id", "version")}
 
 
+def check_retry_policy(state, claims, timeline, horizon):
+    """Check observed retry behavior separately from the four business-state classes."""
+    windows, errors, seen = [], [], set()
+    for event in timeline:
+        if event["kind"] != "rate_limited":
+            continue
+        end = event["tick"] + event["detail"]["retry_after"]
+        window = {k: event[k] for k in ("service", "operation", "lead_id", "version")}
+        window.update(start=event["tick"], end=end, seq=event["seq"])
+        windows.append(window)
+        for attempt in state[event["service"]]["attempts"]:
+            if (attempt["lead_id"] == event["lead_id"] and attempt["version"] == event["version"]
+                    and attempt["operation"] == event["operation"] and attempt["seq"] > event["seq"]
+                    and attempt["tick"] < end):
+                identity = ("attempt", event["service"], attempt["seq"])
+                if identity not in seen:
+                    errors.append({"rule": "RETRY_AFTER_RESPECTED", **window,
+                                   "actual_tick": attempt["tick"], "witness": attempt})
+                    seen.add(identity)
+        if end <= horizon:
+            continue
+        for claim in claims:
+            if (claim["lead_id"] == event["lead_id"] and claim["version"] == event["version"]
+                    and claim["state"] == "pending" and claim.get("phase") == event["service"]
+                    and claim.get("next_due", end) < end):
+                identity = ("due", event["service"], claim["lead_id"], claim["version"])
+                if identity not in seen:
+                    errors.append({"rule": "DURABLE_RETRY_DUE", **window,
+                                   "actual_due": claim["next_due"], "witness": claim})
+                    seen.add(identity)
+    return {"passed": not errors, "checked_windows": windows, "errors": errors}
+
+
 def evaluate(scenario, state, claims, timeline):
     violations = []
 

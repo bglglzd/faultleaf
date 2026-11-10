@@ -1102,8 +1102,17 @@
             target.append(node("p", "Invariant results unavailable.", "empty"));
             return;
           }
+          const policy = run.retry_policy;
+          if (object(policy) && Array.isArray(policy.errors) && policy.errors.length) {
+            const block = node("article", undefined, "violation");
+            block.append(node("h3", "Retry window violation"));
+            const details = node("details");
+            details.append(node("summary", "Inspect attempt and due-time evidence"), node("pre", json(policy.errors)));
+            block.append(details);
+            target.append(block);
+          }
           if (!run.violations.length) {
-            target.append(node("p", "No violations recorded.", "empty"));
+            target.append(node("p", "No business-state violations recorded.", "empty"));
             return;
           }
           for (const violation of run.violations) {
@@ -1367,6 +1376,9 @@
           } else if (!inspected) {
             result.textContent = name + " · State inspection incomplete";
             result.classList.add("unknown");
+          } else if (object(run.retry_policy) && run.retry_policy.passed === false) {
+            result.textContent = name + " · Retry policy violation";
+            result.classList.add("fail");
           } else if (run.passed === true && Array.isArray(run.violations)) {
             result.textContent = name + " · Checks pass";
             result.classList.add("pass");

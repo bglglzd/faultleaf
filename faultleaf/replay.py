@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import threading
 
-from .oracle import evaluate
+from .oracle import check_retry_policy, evaluate
 from .scenario import VARIANTS, validate
 from .services import HTTPTransport, MemoryTransport, Sandbox, WorkerCrash, canonical, open_stores
 from .worker import Worker
@@ -103,7 +103,9 @@ class Engine:
         state = self.transport.snapshot()
         claims = self.worker.claims()
         violations = evaluate(self.scenario, state, claims, self.timeline)
-        result = {"variant": self.variant, "engine": self.transport.name, "passed": valid and not violations,
+        retry_policy = check_retry_policy(state, claims, self.timeline, self.scenario["horizon"])
+        result = {"variant": self.variant, "engine": self.transport.name,
+                  "passed": valid and not violations and retry_policy["passed"], "retry_policy": retry_policy,
                   "valid": valid, "unreached_faults": unreached_faults,
                   "initial_state": self.initial_state, "state": state, "claims": claims,
                   "timeline": self.timeline, "violations": violations,

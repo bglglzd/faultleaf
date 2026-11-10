@@ -866,6 +866,11 @@
       "variant": "M02_fresh_key_on_retry",
       "engine": "deterministic-memory",
       "passed": false,
+      "retry_policy": {
+        "passed": true,
+        "checked_windows": [],
+        "errors": []
+      },
       "valid": true,
       "unreached_faults": [],
       "initial_state": {
@@ -1448,12 +1453,17 @@
       ],
       "unreached_tokens": [],
       "restart_scope": "worker_instance_reopen; not OS process evidence",
-      "canonical_digest": "4fd11f4632b5c6bc82a29e306dcc4086346d55fce2f5d6b0184635b93ca3b308"
+      "canonical_digest": "93db9c062a6014bcf229a69435c9c55260cb521a7906a4c0d2fe03748febfe68"
     },
     "candidate": {
       "variant": "candidate",
       "engine": "deterministic-memory",
       "passed": true,
+      "retry_policy": {
+        "passed": true,
+        "checked_windows": [],
+        "errors": []
+      },
       "valid": true,
       "unreached_faults": [],
       "initial_state": {
@@ -1945,7 +1955,7 @@
       "violations": [],
       "unreached_tokens": [],
       "restart_scope": "worker_instance_reopen; not OS process evidence",
-      "canonical_digest": "393f48f446f00d76f8321250419718ac26169a30741a1e086499182d9d27038b"
+      "canonical_digest": "d8b5084ad685bce132d91d352ad56e6def8ac0f243afd282ed6b24a84fc0556a"
     }
   },
   "reduction": {
@@ -1972,8 +1982,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "4fd11f4632b5c6bc82a29e306dcc4086346d55fce2f5d6b0184635b93ca3b308",
-        "candidate_digest": "393f48f446f00d76f8321250419718ac26169a30741a1e086499182d9d27038b"
+        "unsafe_digest": "93db9c062a6014bcf229a69435c9c55260cb521a7906a4c0d2fe03748febfe68",
+        "candidate_digest": "d8b5084ad685bce132d91d352ad56e6def8ac0f243afd282ed6b24a84fc0556a"
       },
       {
         "pair": 2,
@@ -1984,8 +1994,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "91f5541264ca6b87b64ecc38629fc26cd004be1ccfe60ba19d879b93bd41612d",
-        "candidate_digest": "444b0a27346fd1955d2123cb3b56f68397f01a3621374c7b76d18bd17337a5c7"
+        "unsafe_digest": "1454fe9a9151e83d10eea41a85ce64fa5f05ab0af7484082f346c0238c909f92",
+        "candidate_digest": "f80758a356f6dd69566f2773fdd05a0bb75d6a62584693d07a2346183635b289"
       },
       {
         "pair": 3,
@@ -1995,8 +2005,8 @@
           "WAKE7",
           "WAKE12"
         ],
-        "unsafe_digest": "161146e1a2d37f1b31849992dfc67027a6b47c9e5e3dcf198fbc8f9595722b6c",
-        "candidate_digest": "8890c065a4124bd523b87c6ecc1cdd3dfb2195a82712411ab3b42b7f3b287bc5"
+        "unsafe_digest": "1b31e66959cc88e6f3ca30147fdc6221397ab1a2ea58f25366cc10e0c435af70",
+        "candidate_digest": "a3facd2054e3231e39f194a80cfa7c839f0bb832f3e906592bec42d8b09d614e"
       },
       {
         "pair": 4,
@@ -2005,8 +2015,8 @@
           "FL04_S1",
           "WAKE12"
         ],
-        "unsafe_digest": "04fc4383ed8f63a2242356f95f0392c1e012c311a616050705973ad94d869666",
-        "candidate_digest": "58aa36fbae39c85c1be866a11462a5e5ee4d6e542fa04c30ccea7a36b0012d14"
+        "unsafe_digest": "74c0eba523f0df5a537ac6c4f329eda2c45dc644f62ac3fba41ffe1a7c9e28fa",
+        "candidate_digest": "4fe7ca747d385620e08cf2815c6497bd0fbbb907de1068135cfe850bd4ffadbc"
       },
       {
         "pair": 5,
@@ -2014,8 +2024,8 @@
         "tokens": [
           "FL04_S1"
         ],
-        "unsafe_digest": "7b97b3c350ee586a310cf46b2cc8394f0bd34c73153b6d047e8b1ebe4d0e515d",
-        "candidate_digest": "813c08b0b1bd0a2f45fa326044582e848fc6cd9ae9774614a6635c06205bc74c"
+        "unsafe_digest": "b98d6d793834cf6322998d88246d57ac0404ef6d47a1120747e4cf3228b2ca1f",
+        "candidate_digest": "45508a8c3a914d62c298274eb47a26c145a26c34c330b8fc9e9e6d0669ac6c56"
       }
     ],
     "scenario": {
@@ -2382,8 +2392,17 @@
             target.append(node("p", "Invariant results unavailable.", "empty"));
             return;
           }
+          const policy = run.retry_policy;
+          if (object(policy) && Array.isArray(policy.errors) && policy.errors.length) {
+            const block = node("article", undefined, "violation");
+            block.append(node("h3", "Retry window violation"));
+            const details = node("details");
+            details.append(node("summary", "Inspect attempt and due-time evidence"), node("pre", json(policy.errors)));
+            block.append(details);
+            target.append(block);
+          }
           if (!run.violations.length) {
-            target.append(node("p", "No violations recorded.", "empty"));
+            target.append(node("p", "No business-state violations recorded.", "empty"));
             return;
           }
           for (const violation of run.violations) {
@@ -2647,6 +2666,9 @@
           } else if (!inspected) {
             result.textContent = name + " · State inspection incomplete";
             result.classList.add("unknown");
+          } else if (object(run.retry_policy) && run.retry_policy.passed === false) {
+            result.textContent = name + " · Retry policy violation";
+            result.classList.add("fail");
           } else if (run.passed === true && Array.isArray(run.violations)) {
             result.textContent = name + " · Checks pass";
             result.classList.add("pass");

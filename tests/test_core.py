@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from faultleaf.oracle import evaluate, signature
+from faultleaf.oracle import check_retry_policy, evaluate, signature
 from faultleaf.process import verify_process_recovery
 from faultleaf.reduce import reduce_failure
 from faultleaf.replay import Engine, replay
@@ -36,6 +36,17 @@ class DomainTests(unittest.TestCase):
         attempts = result["state"]["calendar"]["attempts"]
         self.assertEqual([a["tick"] for a in attempts], [0, 5])
         self.assertEqual([a["outcome"] for a in attempts], ["rate_limited", "committed"])
+
+    def test_pending_horizon_cannot_hide_busy_retry_or_earlier_due(self):
+        result = replay(fixture("FL10"))
+        self.assertTrue(result["retry_policy"]["passed"])
+        self.assertEqual(result["claims"][0]["next_due"], 30)
+        attempt = deepcopy(result["state"]["calendar"]["attempts"][0])
+        attempt.update(tick=1, seq=len(result["timeline"]) + 1, occurrence=2)
+        result["state"]["calendar"]["attempts"].append(attempt)
+        result["claims"][0]["next_due"] = 1
+        policy = check_retry_policy(result["state"], result["claims"], result["timeline"], 10)
+        self.assertEqual({e["rule"] for e in policy["errors"]}, {"RETRY_AFTER_RESPECTED", "DURABLE_RETRY_DUE"})
 
     def test_outage_pending_then_same_durable_work_recovers(self):
         scenario = fixture("FL11")
@@ -141,6 +152,18 @@ class DomainTests(unittest.TestCase):
 
 
 class InputTests(unittest.TestCase):
+    def test_omitted_optional_collections_are_normalized(self):
+        from faultleaf.scenario import validate
+        scenario = fixture("FL01")
+        scenario.pop("faults")
+        scenario.pop("mutations")
+        scenario["initial"] = {}
+        normalized = validate(scenario)
+        self.assertEqual(normalized["faults"], [])
+        self.assertEqual(normalized["mutations"], [])
+        self.assertEqual(normalized["initial"], dict(crm=[], calendar=[], notifications=[]))
+        self.assertTrue(replay(normalized)["passed"])
+
     def test_rejects_alias_tags_duplicate_keys_and_deep_yaml(self):
         for text in ("a: &x []\nb: *x", "!!python/object:os.system {}", "id: one\nid: two",
                      "a: " + "[" * 30 + "]" * 30, "date: 2026-11-10", "name: '\ud800'",
