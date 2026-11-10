@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools==84.2.1", "wheel==0.48.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "faultleaf"
+version = "0.1.0"
+description = "Workflow failure replay with CRM, calendar and notification state checks"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Faultleaf contributors"}]
+dependencies = ["PyYAML==6.0.3"]
+
+[project.scripts]
+faultleaf = "faultleaf.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["faultleaf*"]
+
+[tool.setuptools.package-data]
+faultleaf = ["scenarios/*.yaml", "assets/*", "workflows/*.json"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
