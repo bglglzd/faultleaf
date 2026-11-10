@@ -1,0 +1,235 @@
+{
+  "id": "flLeadFlow2026111",
+  "name": "Faultleaf lead to appointment",
+  "active": false,
+  "versionId": "1dee2ea1-a7d7-44bb-be7c-9cea42ea8460",
+  "nodes": [
+    {
+      "id": "eb7d5f83-eb0e-4b89-a3f7-9124dec356dc",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "2fcf376e-fbaf-44c4-810c-32e87c8d2851",
+      "name": "Load delivery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        0
+      ],
+      "retryOnFail": false,
+      "parameters": {
+        "url": "__FAULTLEAF_DELIVERY_URL__",
+        "authentication": "none",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "55328153-dfc7-4cd8-ac51-e79d8c0658ea",
+      "name": "CRM write",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        440,
+        0
+      ],
+      "retryOnFail": false,
+      "onError": "stopWorkflow",
+      "parameters": {
+        "method": "PUT",
+        "authentication": "none",
+        "url": "={{ $('Load delivery').item.json.services.crm + '/items/' + encodeURIComponent($('Load delivery').item.json.intent.lead_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'crm:' + $('Load delivery').item.json.intent.lead_id + ':' + $('Load delivery').item.json.intent.version + ':' + ($('Load delivery').item.json.intent.closed ? 'close' : 'upsert') }}"
+            },
+            {
+              "name": "X-Faultleaf-Event",
+              "value": "={{ $('Load delivery').item.json.event_id }}"
+            },
+            {
+              "name": "X-Faultleaf-Tick",
+              "value": "={{ String($('Load delivery').item.json.tick) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Load delivery').item.json.intent) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "be0bf608-9197-4238-86f0-b5cbe0c85e71",
+      "name": "Calendar write",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        680,
+        0
+      ],
+      "retryOnFail": false,
+      "onError": "stopWorkflow",
+      "parameters": {
+        "method": "={{ $('Load delivery').item.json.intent.closed ? 'DELETE' : 'PUT' }}",
+        "authentication": "none",
+        "url": "={{ $('Load delivery').item.json.services.calendar + '/items/' + encodeURIComponent($('Load delivery').item.json.intent.lead_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'calendar:' + $('Load delivery').item.json.intent.lead_id + ':' + $('Load delivery').item.json.intent.version + ':' + ($('Load delivery').item.json.intent.closed ? 'close' : 'upsert') }}"
+            },
+            {
+              "name": "X-Faultleaf-Event",
+              "value": "={{ $('Load delivery').item.json.event_id }}"
+            },
+            {
+              "name": "X-Faultleaf-Tick",
+              "value": "={{ String($('Load delivery').item.json.tick) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Load delivery').item.json.intent.closed ? $('Load delivery').item.json.intent : {...$('Load delivery').item.json.intent, crm_id: $('CRM write').item.json.body.items[0].id}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "9be32c67-e3bc-4204-87b9-ab3b40464ebe",
+      "name": "Notification write",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        920,
+        0
+      ],
+      "retryOnFail": false,
+      "onError": "stopWorkflow",
+      "parameters": {
+        "method": "={{ $('Load delivery').item.json.intent.closed ? 'DELETE' : 'PUT' }}",
+        "authentication": "none",
+        "url": "={{ $('Load delivery').item.json.services.notifications + '/items/' + encodeURIComponent($('Load delivery').item.json.intent.lead_id) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'notifications:' + $('Load delivery').item.json.intent.lead_id + ':' + $('Load delivery').item.json.intent.version + ':' + ($('Load delivery').item.json.intent.closed ? 'close' : 'upsert') }}"
+            },
+            {
+              "name": "X-Faultleaf-Event",
+              "value": "={{ $('Load delivery').item.json.event_id }}"
+            },
+            {
+              "name": "X-Faultleaf-Tick",
+              "value": "={{ String($('Load delivery').item.json.tick) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Load delivery').item.json.intent.closed ? $('Load delivery').item.json.intent : {...$('Load delivery').item.json.intent, crm_id: $('CRM write').item.json.body.items[0].id, booking_id: $('Calendar write').item.json.body.items[0].id}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 5000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Load delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load delivery": {
+      "main": [
+        [
+          {
+            "node": "CRM write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM write": {
+      "main": [
+        [
+          {
+            "node": "Calendar write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar write": {
+      "main": [
+        [
+          {
+            "node": "Notification write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
