@@ -6,6 +6,8 @@ User: an automation engineer checking one lead-to-appointment integration. Load 
 
 Each immutable fact has `event_id`, `lead_id`, integer `version`, `slot`, `display_name` and `status` (`open`, `priority`, `closed`). Normal requests preserve operator-owned status/tags. A higher-version operator close cancels an active synthetic booking and withdraws the queued confirmation. A later normal request cannot reopen an operator-closed lead. Rescheduling retains one active booking/current queue item. No notification is actually sent.
 
+The v0.1 operator-event profile supports closing only. Explicit reopening is rejected during input validation; initial priority/status/tags are preserved. This bounded cancellation process does not model a complete CRM lifecycle.
+
 Three separate loopback APIs support `GET /state`, `GET /items/<lead>`, safe `PUT /items/<lead>`, safe `DELETE /items/<lead>` and intentionally unkeyed `POST /items`. PUT/DELETE use `Idempotency-Key`, `X-Faultleaf-Event`, `X-Faultleaf-Tick`. Idempotency replays the prior acknowledgment without another effect; conflicting reuse fails. Unkeyed creates can duplicate business identities. State includes a retained before/after effect ledger and separate attempt records.
 
 ## Required behavior

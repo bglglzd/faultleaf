@@ -25,6 +25,8 @@ Python replay also audits retry timing separately from the four business-state c
 
 `deterministic-memory` uses direct calls to the same stores. `loopback-http` uses three real HTTP listeners and independent GET snapshots. Default restart scenarios replace the worker instance and reopen its SQLite file. `process-check` separately launches a Python process, terminates it with exit 73 after an external commit and before its local checkpoint, then launches a different process using the same file. That is distinct process evidence; it is not inferred from instance reopening.
 
+Process reports keep parent service events and returned child checkpoint traces separately; a complete merged pre-crash event order is not claimed.
+
 The n8n adapter is a separate fixed HTTP graph. It is not a general n8n workflow evaluator. Its supported real-runtime subset and isolation instructions are in [n8n.md](n8n.md). The input endpoint returns data only. No Code node delegates the workflow back to Python.
 
 ## Reduction

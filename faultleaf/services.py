@@ -114,8 +114,7 @@ class Store:
                 if (candidate["lead_id"] == lead and candidate["version"] == version
                         and candidate["operation"] == operation
                         and ("through" not in candidate or tick <= candidate["through"])
-                        and (candidate["occurrence"] == "all" or candidate["occurrence"] == occurrence
-                             or ("through" in candidate and tick <= candidate["through"]))):
+                        and (candidate["occurrence"] == "all" or candidate["occurrence"] == occurrence)):
                     fault = candidate
                     break
             window = self.data["windows"].get(signature, 0)
@@ -341,9 +340,12 @@ class HTTPTransport:
             with urlopen(request, timeout=5) as response:
                 return json.loads(response.read(2 * 1024 * 1024))
         except HTTPError as exc:
-            if exc.headers.get("X-Faultleaf-Crash") == "1":
-                raise WorkerCrash() from exc
-            raise ServiceError(exc.code, f"Service HTTP {exc.code}", int(exc.headers.get("Retry-After", "1"))) from exc
+            try:
+                if exc.headers.get("X-Faultleaf-Crash") == "1":
+                    raise WorkerCrash() from exc
+                raise ServiceError(exc.code, f"Service HTTP {exc.code}", int(exc.headers.get("Retry-After", "1"))) from exc
+            finally:
+                exc.close()
         except (URLError, OSError, ConnectionError) as exc:
             raise ServiceError(0, "No acknowledgment") from exc
 

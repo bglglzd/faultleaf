@@ -46,6 +46,8 @@ The [24 YAML scenarios](docs/scenarios.md) declare expected state separately fro
 
 The candidate persists receipts, latest intent, progress and next retry in SQLite. Services keep a separate ledger of attempts and committed effects. Calendar/queue references must resolve to the current upstream records. A higher-version operator close retains the contact, cancels the booking and withdraws the synthetic confirmation. Normal requests preserve operator-owned fields.
 
+Operator events support closing a lead. Reopening is outside this version's profile and is rejected as an input error; preexisting priority/status/tags are preserved.
+
 The optional [n8n adapter](docs/n8n.md) uses a fixed export of explicit HTTP nodes with a separately installed runtime. Python replay results do not establish that n8n executed. See that document for the supported subset and runtime limits.
 
 ## Scope

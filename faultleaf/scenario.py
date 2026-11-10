@@ -150,6 +150,8 @@ def validate(document):
             raise ScenarioError("fact type must be request or operator")
         if fact.get("status") not in ("open", "priority", "closed"):
             raise ScenarioError("Unknown status")
+        if fact["type"] == "operator" and fact["status"] != "closed":
+            raise ScenarioError("Operator events support closing a lead; reopening is outside the v0.1 profile")
         for key in ("slot", "display_name"):
             if not isinstance(fact.get(key), str) or len(fact[key]) > 160:
                 raise ScenarioError(f"{key} must be short text")
@@ -183,8 +185,10 @@ def validate(document):
                     raise ScenarioError("Service barrier requires its semantic operation")
                 _identifier(anchor.get("lead_id"), "barrier lead")
                 _integer(anchor.get("version"), "barrier version", 1_000_000)
-            if anchor["point"] == "receipt_durable" and anchor.get("event_id") not in facts:
-                raise ScenarioError("Receipt barrier requires a known event")
+            if anchor["point"] == "receipt_durable":
+                _identifier(anchor.get("event_id"), "receipt barrier event_id")
+                if anchor["event_id"] not in facts:
+                    raise ScenarioError("Receipt barrier requires a known event")
             if anchor["point"] == "worker_completed":
                 _identifier(anchor.get("lead_id"), "barrier lead")
                 _integer(anchor.get("version"), "barrier version", 1_000_000)
@@ -246,6 +250,7 @@ def validate(document):
         if "version" in claim:
             _integer(claim["version"], "expected claim version", 1_000_000)
     for mutation in _objects(data.get("mutations", []), "mutations", 8):
+        _identifier(mutation.get("variant"), "mutation.variant")
         if mutation.get("variant") not in VARIANTS - {"candidate"} or not isinstance(mutation.get("target"), dict):
             raise ScenarioError("Unknown mutation or missing target signature")
     reduction = data.setdefault("reduction", {"eligible": False, "required_fault_ids": [], "pinned_facts": []})

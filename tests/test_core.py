@@ -6,13 +6,14 @@ import json
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from faultleaf.oracle import check_retry_policy, evaluate, signature
 from faultleaf.process import verify_process_recovery
 from faultleaf.reduce import reduce_failure
 from faultleaf.replay import Engine, ReplayError, compare, replay
 from faultleaf.scenario import ScenarioError, examples, load, loads
-from faultleaf.services import ServiceError
+from faultleaf.services import HTTPTransport, ServiceError, WorkerCrash
 from faultleaf.suite import run_suite
 
 
@@ -21,6 +22,33 @@ def fixture(name):
 
 
 class DomainTests(unittest.TestCase):
+    def test_clean_control_runs_a_genuinely_unsafe_baseline_without_inventing_failure(self):
+        result = compare(fixture("FL01"))
+        self.assertEqual(result["runs"]["unsafe"]["variant"], "M01_no_idempotency")
+        self.assertEqual(result["runs"]["candidate"]["variant"], "candidate")
+        self.assertTrue(all(run["passed"] for run in result["runs"].values()))
+
+    def test_numeric_occurrence_and_through_are_both_required(self):
+        scenario = fixture("FL11")
+        scenario["horizon"] = 3
+        scenario["faults"][0].update(occurrence=1, through=3)
+        scenario["expected"] = fixture("FL01")["expected"]
+        result = replay(scenario, http=True)
+        self.assertTrue(result["passed"], result["violations"])
+        applied = [e for e in result["timeline"] if e["kind"] == "fault_injected"]
+        self.assertEqual([e["tick"] for e in applied], [0])
+        self.assertEqual(result["state"]["notifications"]["effects"][0]["tick"], 1)
+
+    def test_http_error_responses_close_for_retry_and_crash_paths(self):
+        for crash in (False, True):
+            stream = io.BytesIO(b'{"error":"synthetic"}')
+            headers = {"X-Faultleaf-Crash": "1"} if crash else {"Retry-After": "3"}
+            error = HTTPError("http://127.0.0.1:1/items/L1", 503 if crash else 429, "Synthetic", headers, stream)
+            with self.subTest(crash=crash), patch("faultleaf.services.urlopen", side_effect=error):
+                with self.assertRaises(WorkerCrash if crash else ServiceError):
+                    HTTPTransport({"crm": "http://127.0.0.1:1"}).get("crm", "L1")
+            self.assertTrue(stream.closed)
+
     def test_redelivery_after_operator_close_preserves_receipt_and_closed_state(self):
         scenario = fixture("FL01")
         scenario["schedule"][0]["delivery_id"] = "operator-C2"
@@ -233,6 +261,14 @@ class DomainTests(unittest.TestCase):
 
 
 class InputTests(unittest.TestCase):
+    def test_reopening_operator_events_are_rejected_by_the_declared_close_only_profile(self):
+        from faultleaf.scenario import validate
+        for status in ("open", "priority"):
+            scenario = fixture("FL14")
+            scenario["facts"]["M_close2"]["status"] = status
+            with self.subTest(status=status), self.assertRaisesRegex(ScenarioError, "reopening is outside"):
+                validate(scenario)
+
     def test_optional_description_produces_viewable_report_metadata(self):
         scenario = fixture("FL01")
         scenario.pop("description")
@@ -299,6 +335,9 @@ class InputTests(unittest.TestCase):
                        lambda s: s["facts"]["E1"].pop("status"),
                        lambda s: s["initial"].update(unexpected="note"),
                        lambda s: s["schedule"][0].update(event={}),
+                       lambda s: s.update(mutations=[{"variant": {}, "target": {}}]),
+                       lambda s: s["schedule"].append({"token_id": "R", "action": "restart_worker",
+                           "after": {"point": "receipt_durable", "event_id": {}}, "pinned": False}),
                        lambda s: s["reduction"].update(pinned_facts=[{}]),
                        lambda s: s["reduction"].update(required_fault_ids=[{}]),
                        lambda s: s["schedule"][0].update(pinned=False),

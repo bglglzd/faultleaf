@@ -74,7 +74,8 @@ class Engine:
                     return
             # External delivery IDs cannot contain ':', so operator receipts have
             # a separate namespace and cannot conflict with a valid webhook ID.
-            self.worker.receive(fact, step.get("delivery_id", "operator:" + fact["event_id"]), self.tick)
+            delivery = step["delivery_id"] if step["action"] == "deliver" else "operator:" + fact["event_id"]
+            self.worker.receive(fact, delivery, self.tick)
         elif step["action"] == "restart_worker":
             self.restart_requested = True
 
@@ -160,7 +161,7 @@ def replay(scenario, variant="candidate", *, http=False, directory=None):
 def compare(scenario, variant=None, *, http=False):
     scenario = validate(scenario)
     if variant is None:
-        variant = scenario.get("mutations", [{}])[0].get("variant", "candidate") if scenario.get("mutations") else "candidate"
+        variant = scenario["mutations"][0]["variant"] if scenario["mutations"] else "M01_no_idempotency"
     return {"schema_version": 1, "scenario": {k: scenario.get(k) for k in ("id", "title", "description", "horizon")},
             "synthetic": True, "runs": {"unsafe": replay(scenario, variant, http=http),
                                          "candidate": replay(scenario, "candidate", http=http)}}

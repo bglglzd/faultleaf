@@ -5,7 +5,7 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 
-from faultleaf.report import render_report, write_report
+from faultleaf.report import MAX_REPORT_BYTES, render_report, write_report
 
 
 def example_report():
@@ -180,6 +180,28 @@ class ReportTests(unittest.TestCase):
         report["metadata"] = chr(0x1F642) * 131073
         with self.assertRaisesRegex(ValueError, "256 KiB viewer limit"):
             render_report(report)
+
+    def test_saved_json_includes_its_newline_in_the_byte_limit_on_every_platform(self):
+        report = example_report()
+        report["metadata"] = [""] * 8
+        needed = MAX_REPORT_BYTES - len(json.dumps(report, ensure_ascii=False, allow_nan=False, indent=2).encode())
+        for index in range(8):
+            count = min(needed, 262144)
+            report["metadata"][index] = "x" * count
+            needed -= count
+        self.assertEqual(needed, 0)
+        self.assertEqual(len(json.dumps(report, ensure_ascii=False, allow_nan=False, indent=2).encode()), MAX_REPORT_BYTES)
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "report"
+            with self.assertRaisesRegex(ValueError, "2 MiB"):
+                write_report(report, target)
+            self.assertFalse(target.exists())
+            report["metadata"][-1] = report["metadata"][-1][:-1]
+            write_report(report, target)
+            data = (target / "report.json").read_bytes()
+            self.assertEqual(len(data), MAX_REPORT_BYTES)
+            self.assertTrue(data.endswith(b"\n"))
+            self.assertNotIn(b"\r\n", data)
 
     def test_missing_optional_evidence_still_produces_a_viewable_document(self):
         report = {"schema_version": 1, "scenario": {"id": "partial"}, "runs": {"candidate": {}}}

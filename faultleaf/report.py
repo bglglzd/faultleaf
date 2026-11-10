@@ -11,7 +11,7 @@ def _encoded(report: dict) -> str:
     if not isinstance(report, dict):
         raise ValueError("Report must be an object")
     raw = json.dumps(report, ensure_ascii=False, allow_nan=False, indent=2)
-    if len(raw.encode("utf-8")) > MAX_REPORT_BYTES:
+    if len(raw.encode("utf-8")) + 1 > MAX_REPORT_BYTES:
         raise ValueError("Report exceeds the 2 MiB viewer limit")
     pending, nodes = [(report, 0)], 0
     while pending:
@@ -57,5 +57,5 @@ def write_report(report: dict, path: Path) -> None:
     raw = _encoded(report)
     target = path if path.suffix.lower() == ".html" else path / "report.html"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.with_name("report.json").write_text(raw + "\n", encoding="utf-8")
-    target.write_text(html, encoding="utf-8")
+    target.with_name("report.json").write_text(raw + "\n", encoding="utf-8", newline="\n")
+    target.write_text(html, encoding="utf-8", newline="\n")

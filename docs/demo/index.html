@@ -2740,6 +2740,7 @@
         $("file").addEventListener("change", async () => {
           const file = $("file").files[0];
           if (!file) return;
+          message("Loading report…");
           try {
             if (file.size > MAX_BYTES)
               throw Error("File exceeds the 2 MiB limit.");
