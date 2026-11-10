@@ -101,9 +101,12 @@ def validate(document):
     data = deepcopy(document)
     data.setdefault("faults", [])
     data.setdefault("mutations", [])
+    data.setdefault("description", "")
     _identifier(data.get("id"), "id")
     if not isinstance(data.get("title"), str) or len(data["title"]) > 160:
         raise ScenarioError("title must be text of at most 160 characters")
+    if not isinstance(data["description"], str) or len(data["description"]) > 2000:
+        raise ScenarioError("description must be text of at most 2000 characters")
     _integer(data.get("horizon"), "horizon")
     _integer(data.get("seed", 0), "seed", 2**31 - 1)
     facts = data.get("facts")
@@ -166,6 +169,9 @@ def validate(document):
         if step["action"] in ("deliver", "manual_status"):
             if step.get("event") not in facts:
                 raise ScenarioError("Schedule references an unknown fact")
+            required_type = "operator" if step["action"] == "manual_status" else "request"
+            if facts[step["event"]]["type"] != required_type:
+                raise ScenarioError(f"{step['action']} requires a {required_type} fact")
         if step["action"] == "deliver":
             _identifier(step.get("delivery_id"), "delivery_id")
     seen = set()
@@ -230,14 +236,19 @@ def loads(text):
     except ScenarioError:
         raise
     except (yaml.YAMLError, RecursionError, TypeError, ValueError, UnicodeError) as exc:
-        raise ScenarioError(f"Invalid YAML: {type(exc).__name__}") from exc
+        mark = getattr(exc, "problem_mark", None)
+        position = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
+        raise ScenarioError(f"Invalid YAML{position}: {type(exc).__name__}") from exc
 
 
 def load(path):
     path = Path(path)
     if path.stat().st_size > MAX_BYTES:
         raise ScenarioError("Scenario exceeds 512 KiB")
-    return loads(path.read_text(encoding="utf-8"))
+    try:
+        return loads(path.read_text(encoding="utf-8"))
+    except ScenarioError as exc:
+        raise ScenarioError(f"{path.name}: {exc}") from exc
 
 
 def examples():

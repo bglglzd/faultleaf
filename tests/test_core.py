@@ -1,13 +1,16 @@
 from contextlib import ExitStack
 from copy import deepcopy
 from pathlib import Path
+import io
+import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from faultleaf.oracle import check_retry_policy, evaluate, signature
 from faultleaf.process import verify_process_recovery
 from faultleaf.reduce import reduce_failure
-from faultleaf.replay import Engine, replay
+from faultleaf.replay import Engine, ReplayError, compare, replay
 from faultleaf.scenario import ScenarioError, examples, load, loads
 from faultleaf.services import ServiceError
 from faultleaf.suite import run_suite
@@ -18,6 +21,44 @@ def fixture(name):
 
 
 class DomainTests(unittest.TestCase):
+    def test_redelivery_after_operator_close_preserves_receipt_and_closed_state(self):
+        scenario = fixture("FL01")
+        scenario["facts"]["C2"] = dict(scenario["facts"]["E1"], event_id="C2", version=2,
+                                       status="closed", type="operator")
+        scenario["facts"]["E3"] = dict(scenario["facts"]["E1"], event_id="E3", version=3)
+        scenario["schedule"] += [
+            {"token_id": "CLOSE", "action": "manual_status", "at": 1, "event": "C2", "pinned": True},
+            {"token_id": "NEW", "action": "deliver", "at": 2, "event": "E3", "delivery_id": "D3", "pinned": True},
+            {"token_id": "REDELIVERY", "action": "deliver", "at": 3, "event": "E3", "delivery_id": "D3", "pinned": False},
+        ]
+        scenario["expected"] = {"services": {"crm": [dict(lead_id="L1", version=3, status="closed",
+            display_name="Alex Example", operator_tags=[])], "calendar": [], "notifications": []},
+            "claims": [dict(lead_id="L1", version=3, state="blocked")]}
+        for http in (False, True):
+            with self.subTest(http=http):
+                result = replay(scenario, http=http)
+                self.assertTrue(result["passed"], result["violations"])
+                self.assertEqual(result["claims"][0]["state"], "blocked")
+                self.assertEqual(len([e for e in result["timeline"] if e["kind"] == "delivery_received"]), 4)
+
+    def test_nonadvancing_manual_edit_is_harness_error_at_and_after_commit(self):
+        for http in (False, True):
+            for anchor in ("at", "after"):
+                with self.subTest(http=http, anchor=anchor):
+                    scenario = fixture("FL01")
+                    scenario["facts"]["E1"]["version"] = 2
+                    scenario["facts"]["C1"] = dict(scenario["facts"]["E1"], event_id="C1", version=1,
+                                                   status="closed", type="operator")
+                    step = {"token_id": "OLD_CLOSE", "action": "manual_status", "event": "C1", "pinned": True}
+                    if anchor == "at":
+                        step["at"] = 1
+                    else:
+                        step["after"] = dict(service="crm", operation="ensure_contact", lead_id="L1",
+                                             version=2, point="effect_committed")
+                    scenario["schedule"].append(step)
+                    with self.assertRaisesRegex(ReplayError, "OLD_CLOSE must advance"):
+                        replay(scenario, http=http)
+
     def test_declared_business_states_and_mutation_signatures_repeat(self):
         result = run_suite(repeat=True)
         self.assertTrue(result["passed"], result)
@@ -152,6 +193,38 @@ class DomainTests(unittest.TestCase):
 
 
 class InputTests(unittest.TestCase):
+    def test_optional_description_produces_viewable_report_metadata(self):
+        scenario = fixture("FL01")
+        scenario.pop("description")
+        report = compare(scenario)
+        self.assertEqual(report["scenario"]["description"], "")
+        from faultleaf.scenario import validate
+        for value in (None, 12, [], "x" * 2001):
+            scenario["description"] = value
+            with self.subTest(value=type(value).__name__), self.assertRaises(ScenarioError):
+                validate(scenario)
+
+    def test_yaml_error_identifies_file_and_syntax_position(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "broken.yaml"
+            path.write_text("schema_version: [\n", encoding="utf-8")
+            with self.assertRaisesRegex(ScenarioError, r"broken.yaml: Invalid YAML at line \d+, column \d+"):
+                load(path)
+
+    def test_cli_distinguishes_checks_from_pending_complete_or_blocked_business_state(self):
+        from faultleaf.cli import main
+        with tempfile.TemporaryDirectory() as temporary:
+            for name, state in (("FL01", "complete"), ("FL10", "pending"), ("FL14", "blocked")):
+                output = io.StringIO()
+                with self.subTest(name=name), patch("sys.stdout", output):
+                    self.assertEqual(main(["replay", name, "--out", str(Path(temporary) / name)]), 0)
+                summary = json.loads(output.getvalue())
+                self.assertTrue(summary["candidate_passed"])
+                self.assertEqual(summary["candidate_outcomes"][0]["state"], state)
+                if state == "pending":
+                    self.assertEqual(summary["candidate_outcomes"][0]["next_due"], 30)
+                    self.assertEqual(summary["candidate_outcomes"][0]["remaining"], ["calendar", "notifications"])
+
     def test_omitted_optional_collections_are_normalized(self):
         from faultleaf.scenario import validate
         scenario = fixture("FL01")

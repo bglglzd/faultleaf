@@ -61,7 +61,14 @@ def main(argv=None):
             if args.reduce:
                 report["reduction"] = reduce_failure(scenario, args.variant)
             write_report(report, args.out)
+            outcomes = []
+            for claim in report["runs"]["candidate"]["claims"]:
+                outcome = {key: claim[key] for key in ("lead_id", "version", "state")}
+                if claim["state"] == "pending":
+                    outcome.update(next_due=claim["next_due"], remaining=claim["remaining"])
+                outcomes.append(outcome)
             print(canonical({"candidate_passed": report["runs"]["candidate"]["passed"],
+                             "candidate_outcomes": outcomes,
                              "unsafe_violations": len(report["runs"]["unsafe"]["violations"]),
                              "report": str(args.out / "report.html")}))
             # The intentionally unsafe run is expected to fail; candidate state controls this exit.

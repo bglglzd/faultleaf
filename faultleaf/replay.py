@@ -9,7 +9,7 @@ import threading
 
 from .oracle import check_retry_policy, evaluate
 from .scenario import VARIANTS, validate
-from .services import HTTPTransport, MemoryTransport, Sandbox, WorkerCrash, canonical, open_stores
+from .services import HTTPTransport, MemoryTransport, Sandbox, ServiceError, WorkerCrash, canonical, open_stores
 from .worker import Worker
 
 
@@ -22,6 +22,11 @@ class Engine:
         self.scenario, self.variant, self.directory = scenario, variant, directory
         self.timeline, self.tick, self.fired, self.restart_requested = [], 0, set(), False
         self.started = False
+        self.harness_error = None
+        self.known_versions = {}
+        for rows in scenario["initial"].values():
+            for item in rows:
+                self.known_versions[item["lead_id"]] = max(item["version"], self.known_versions.get(item["lead_id"], -1))
         self.lock = threading.RLock()
         self.stores = open_stores(stack, directory, scenario["initial"], scenario.get("faults", []),
                                   self.record, self.barrier)
@@ -52,15 +57,30 @@ class Engine:
         self.record("schedule_action", detail={"token_id": step["token_id"], "action": step["action"]})
         if step["action"] in ("deliver", "manual_status"):
             fact = self.scenario["facts"][step["event"]]
+            if (step["action"] == "manual_status" and
+                    fact["version"] <= self.known_versions.get(fact["lead_id"], -1)):
+                self.reject_operator(step)
+                return
+            self.known_versions[fact["lead_id"]] = max(fact["version"], self.known_versions.get(fact["lead_id"], -1))
             self.record("fact_activated", lead_id=fact["lead_id"], version=fact["version"],
                         detail={"event_id": fact["event_id"], "type": fact["type"]})
             if step["action"] == "manual_status":
-                self.stores["crm"].manual(fact, self.tick)
+                try:
+                    self.stores["crm"].manual(fact, self.tick)
+                except ServiceError:
+                    self.reject_operator(step)
+                    return
                 if self.variant == "M04_no_manual_fence":
                     return
             self.worker.receive(fact, step.get("delivery_id", "operator-" + fact["event_id"]), self.tick)
         elif step["action"] == "restart_worker":
             self.restart_requested = True
+
+    def reject_operator(self, step):
+        # Propagate authored schedule errors on the main replay thread. A barrier
+        # failure must not masquerade as the HTTP client's stale-write response.
+        self.harness_error = f"Operator action {step['token_id']} must advance the known lead version"
+        self.record("schedule_rejected", detail={"token_id": step["token_id"], "reason": self.harness_error})
 
     def restart(self, reason):
         self.worker.close()
@@ -80,6 +100,8 @@ class Engine:
             for step in self.scenario["schedule"]:
                 if step.get("at") == self.tick and step["token_id"] not in self.fired:
                     self.action(step)
+            if self.harness_error:
+                raise ReplayError(self.harness_error)
             if self.restart_requested:
                 self.restart("authored_schedule")
             if crash_due is not None:
@@ -87,6 +109,8 @@ class Engine:
             for _ in range(1024):
                 try:
                     progressed = self.worker.step(self.tick)
+                    if self.harness_error:
+                        raise ReplayError(self.harness_error)
                 except WorkerCrash:
                     crash_due = self.tick + 1
                     break
@@ -96,6 +120,8 @@ class Engine:
                     break
             else:
                 raise ReplayError("Replay exceeded per-tick operation bound")
+            if self.harness_error:
+                raise ReplayError(self.harness_error)
         unfired = [s["token_id"] for s in self.scenario["schedule"] if s["token_id"] not in self.fired]
         reached = {e["detail"]["id"] for e in self.timeline if e["kind"] == "fault_injected"}
         unreached_faults = [f["id"] for f in self.scenario["faults"] if f["id"] not in reached]

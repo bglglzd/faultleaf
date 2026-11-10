@@ -37,7 +37,8 @@ class Worker:
             raise ValueError("Delivery ID reused with different business content")
         if variant != "M01_no_idempotency" and duplicate_receipt:
             return
-        data["receipts"][delivery] = payload
+        # Receipt identity is the original delivery, before operator-state projection.
+        data["receipts"][delivery] = deepcopy(payload)
         old = data["latest"].get(fact["lead_id"])
         no_version_fence = variant == "M04_no_revision_fence"
         if variant == "M07_key_by_display_name" and any(
