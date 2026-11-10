@@ -72,11 +72,31 @@ Each write sends:
 - `X-Faultleaf-Tick` containing the logical tick.
 
 Node retries are disabled. A non-2xx response or lost connection stops the graph.
-The outer durable scheduler decides whether to replay the whole workflow at a
+The caller decides whether to replay the whole workflow at a
 later logical tick using the same business-operation keys. n8n does not implement
 the logical clock or the scenario reducer.
 
 ## Calling the CLI adapter
+
+With n8n2.46.7 separately installed in an isolated Linux environment:
+
+```sh
+faultleaf n8n-check --executable /path/to/n8n --work-dir reports/n8n-runtime --out reports/n8n-check.json
+```
+
+This command creates the actual three loopback APIs and input-only delivery
+endpoint. It checks six fixed-graph cases: duplicate replay, a lost CRM
+acknowledgment, calendar429 including an early failed retry and later recovery,
+notification429, preserved operator priority and operator close between executions.
+It requires both validated n8n node results and independently inspected service
+state. Failed intermediate executions are expected in the fault cases. The JSON
+retains each observed snapshot and sanitized CLI output. Temporary n8n databases
+are removed when the owning check exits; output evidence remains at `--out`.
+
+This subset does not exercise all24 Python scenarios. There is no claim that
+n8n itself supplies the Python candidate's durable inbox, restart reconciliation
+or between-node manual/revision fence. The check's logical retry schedule is
+bounded in-process test orchestration, not a production retry service.
 
 ```python
 from pathlib import Path

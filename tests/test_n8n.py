@@ -190,7 +190,7 @@ class CLITests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="faultleaf argv & spaces ")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.script = self.root / "fake cli.py"
         self.script.write_text(FAKE_CLI)
         (self.root / "record.json").write_text(json.dumps(successful_execution()))

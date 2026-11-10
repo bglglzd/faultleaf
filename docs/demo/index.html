@@ -1,0 +1,2749 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Faultleaf · Replay report</title>
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1c2d25;
+        background: #f6f4ed;
+        font-size: 16px;
+        line-height: 1.5;
+        color-scheme: light;
+        --surface: #fffefa;
+        --line: #d8ddd2;
+        --muted: #536359;
+        --action: #326347;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      select {
+        min-height: 44px;
+      }
+      button,
+      select,
+      summary,
+      a {
+        touch-action: manipulation;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.55;
+      }
+      a {
+        color: var(--action);
+        text-underline-offset: 3px;
+      }
+      button,
+      select {
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid #bdc8b8;
+        border-radius: 9px;
+        padding: 8px 14px;
+      }
+      button:hover:not(:disabled):not([aria-pressed="true"]),
+      summary:hover {
+        background: #edf2e8;
+      }
+      button[aria-pressed="true"] {
+        background: #326347;
+        border-color: #326347;
+        color: #fff;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      summary:focus-visible,
+      select:focus-visible,
+      [tabindex="-1"]:focus {
+        outline: 3px solid #587b37;
+        outline-offset: 3px;
+      }
+      button.small {
+        min-height: 36px;
+        font-size: 0.8125rem;
+        padding: 5px 10px;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 1.75rem;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+      }
+      h2 {
+        font-size: 1.25rem;
+        line-height: 1.4;
+      }
+      h3 {
+        font-size: 1rem;
+      }
+      h4 {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      code,
+      pre,
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.8125rem;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        line-height: 1.65;
+        margin: 0;
+        max-width: 100%;
+      }
+      .raw pre {
+        max-height: 40rem;
+        overflow: auto;
+        padding: 16px;
+        background: #f4f5ef;
+        border-radius: 9px;
+      }
+      pre:focus {
+        outline: 2px solid #587b37;
+      }
+      summary {
+        cursor: pointer;
+        padding: 10px 0;
+        min-height: 44px;
+        font-size: 0.875rem;
+      }
+      details > div {
+        padding: 4px 0 12px;
+      }
+      .shell {
+        width: min(1200px, calc(100% - 64px));
+        margin: auto;
+      }
+      header {
+        padding: 24px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 1.125rem;
+        font-weight: 650;
+        letter-spacing: -0.025em;
+      }
+      .brand svg {
+        width: 32px;
+        height: 32px;
+        color: #1c2d25;
+      }
+      nav {
+        display: flex;
+        gap: 20px;
+        font-size: 0.8125rem;
+      }
+      main {
+        padding: 32px 0 64px;
+        display: grid;
+        gap: 32px;
+      }
+      .context {
+        display: grid;
+        gap: 20px;
+      }
+      .heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .scope {
+        color: var(--muted);
+        font-size: 0.8125rem;
+        margin-top: 6px;
+      }
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        background: #eef2e8;
+        border: 1px solid #d5dece;
+        border-radius: 12px;
+      }
+      .switch,
+      .actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .switch {
+        align-items: center;
+      }
+      .switch > span {
+        font-size: 0.8125rem;
+        margin-right: 6px;
+      }
+      .actions {
+        justify-content: flex-end;
+      }
+      .context dl {
+        display: grid;
+        grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+        gap: 4px 16px;
+        margin: 0;
+      }
+      .context dt {
+        color: var(--muted);
+        font-size: 0.8125rem;
+      }
+      .context dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-size: 0.875rem;
+      }
+      .result {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        white-space: nowrap;
+        padding-top: 5px;
+      }
+      .result.pass {
+        color: #24583d;
+      }
+      .result.fail {
+        color: #8f3b32;
+      }
+      .result.unknown {
+        color: #755014;
+      }
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      .service-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .service {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        min-width: 0;
+        padding: 20px;
+      }
+      .service > h3 {
+        font-size: 1.125rem;
+        margin-bottom: 20px;
+      }
+      .service > h4 {
+        margin-bottom: 8px;
+      }
+      .service > details {
+        border-top: 1px solid var(--line);
+        margin-top: 12px;
+      }
+      .items {
+        display: grid;
+        gap: 16px;
+      }
+      .record {
+        border-top: 1px solid #e4e7de;
+        padding-top: 12px;
+        min-width: 0;
+      }
+      .record:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+      .fields {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        gap: 6px 12px;
+        margin: 0;
+        font-size: 0.8125rem;
+      }
+      .fields dt {
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .fields dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+      .quiet {
+        color: var(--muted);
+        font-size: 0.875rem;
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.875rem;
+        padding: 4px 0;
+      }
+      .more {
+        margin-top: 12px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 20px;
+        min-width: 0;
+      }
+      .violations {
+        display: grid;
+        gap: 16px;
+      }
+      .violation {
+        border-left: 3px solid #8f3b32;
+        padding: 0 0 0 16px;
+        min-width: 0;
+      }
+      .violation h3 {
+        margin-bottom: 8px;
+      }
+      .violation > .quiet {
+        margin-bottom: 12px;
+      }
+      .evidence {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .evidence > div {
+        min-width: 0;
+      }
+      .evidence h4 {
+        margin-bottom: 5px;
+      }
+      .links {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .claims {
+        display: grid;
+        gap: 16px;
+      }
+      .claims > .record + .record {
+        padding-top: 16px;
+      }
+      .timeline-bar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .timeline-counts {
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+      .timeline-counts span + span {
+        margin-left: 16px;
+      }
+      label {
+        font-size: 0.8125rem;
+      }
+      label select {
+        margin-left: 8px;
+      }
+      .table-wrap {
+        max-width: 100%;
+        min-width: 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        table-layout: fixed;
+        text-align: left;
+        font-size: 0.8125rem;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+        min-width: 0;
+      }
+      th:first-child,
+      td:first-child {
+        padding-left: 0;
+      }
+      th:last-child,
+      td:last-child {
+        padding-right: 0;
+      }
+      th:nth-child(1) {
+        width: 10%;
+      }
+      th:nth-child(2) {
+        width: 15%;
+      }
+      th:nth-child(3) {
+        width: 20%;
+      }
+      th:nth-child(4) {
+        width: 39%;
+      }
+      th:nth-child(5) {
+        width: 16%;
+      }
+      td pre {
+        font-size: 0.75rem;
+      }
+      .record-detail td {
+        padding: 12px 16px !important;
+        background: #f0f3eb;
+      }
+      .record-detail pre {
+        max-height: 28rem;
+        overflow: auto;
+      }
+      .record-detail[hidden] {
+        display: none;
+      }
+      .raw > summary {
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .message {
+        font-size: 0.875rem;
+        min-height: 24px;
+      }
+      .message.error {
+        color: #8f3b32;
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      #content {
+        display: grid;
+        gap: 32px;
+        min-width: 0;
+      }
+      @supports (backdrop-filter: blur(8px)) {
+        .controls {
+          background: rgba(237, 243, 230, 0.8);
+          backdrop-filter: blur(8px);
+        }
+      }
+      @media (max-width: 900px) {
+        .shell {
+          width: calc(100% - 40px);
+        }
+        .service {
+          padding: 16px;
+        }
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        .fields dd + dt {
+          margin-top: 4px;
+        }
+        .evidence {
+          grid-template-columns: 1fr;
+        }
+        .details-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 760px) {
+        .shell {
+          width: calc(100% - 32px);
+        }
+        header {
+          padding: 20px 0;
+          gap: 12px;
+        }
+        nav {
+          gap: 12px;
+          font-size: 0.75rem;
+        }
+        main {
+          padding-top: 24px;
+          gap: 24px;
+        }
+        .heading {
+          flex-wrap: wrap;
+        }
+        h1 {
+          font-size: 1.5rem;
+        }
+        .controls {
+          padding: 12px;
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .actions {
+          justify-content: flex-start;
+        }
+        .service-grid {
+          grid-template-columns: 1fr;
+        }
+        .fields {
+          grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        }
+        .service > h3 {
+          margin-bottom: 16px;
+        }
+        .section-heading {
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+        .panel {
+          padding: 16px;
+        }
+        .context dl {
+          grid-template-columns: 1fr;
+        }
+        .context dd + dt {
+          margin-top: 6px;
+        }
+        table,
+        tbody,
+        tr,
+        td {
+          display: block;
+          width: 100%;
+        }
+        thead {
+          display: none;
+        }
+        tr {
+          display: grid;
+          grid-template-columns: 90px minmax(0, 1fr);
+          gap: 8px 12px;
+          padding: 16px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        td {
+          display: contents;
+          border: 0;
+          padding: 0 !important;
+        }
+        td::before {
+          content: attr(data-label);
+          color: var(--muted);
+        }
+        td > * {
+          min-width: 0;
+        }
+        td > button {
+          justify-self: start;
+        }
+        td > span {
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+        }
+        .record-detail {
+          display: block;
+          padding: 0 0 16px;
+        }
+        .record-detail td {
+          display: block;
+          width: 100%;
+          padding: 12px !important;
+        }
+        .record-detail td::before {
+          display: none;
+        }
+        .timeline-counts span {
+          display: block;
+        }
+        .timeline-counts span + span {
+          margin: 4px 0 0;
+        }
+        .scope {
+          max-width: 100%;
+        }
+        label select {
+          margin-left: 0;
+          display: block;
+          margin-top: 4px;
+        }
+      }
+      @media (max-width: 359px) {
+        nav {
+          gap: 8px;
+        }
+        .actions button,
+        .switch button {
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+        .switch > span {
+          width: 100%;
+        }
+        .fields {
+          grid-template-columns: 1fr;
+        }
+        .panel,
+        .service {
+          padding: 14px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+      @media (prefers-reduced-transparency: reduce) {
+        .controls {
+          backdrop-filter: none;
+          background: #eef2e8;
+        }
+      }
+      @media (forced-colors: active) {
+        .controls,
+        .panel,
+        .service,
+        button,
+        select {
+          background: Canvas;
+          color: CanvasText;
+          border-color: CanvasText;
+          backdrop-filter: none;
+        }
+        button[aria-pressed="true"] {
+          background: Highlight;
+          color: HighlightText;
+        }
+        .result,
+        .quiet,
+        .scope,
+        .fields dt,
+        h4 {
+          color: CanvasText;
+        }
+        .violation {
+          border-color: CanvasText;
+        }
+        :focus-visible {
+          outline-color: Highlight;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="brand"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 32 32"
+  aria-hidden="true" focusable="false"
+  
+>
+  <path
+    fill="currentColor"
+    fill-rule="evenodd"
+    d="M7 4h12l6 6v11a7 7 0 0 1-7 7H7V4Zm4 7v13h3v-5h5v-3h-5v-2h7v-3H11Z"
+  />
+</svg>
+<span>faultleaf</span></div>
+        <nav aria-label="Project">
+          <a
+            href="https://github.com/bglglzd/faultleaf#readme"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Documentation</a
+          ><a
+            href="https://github.com/bglglzd/faultleaf"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Source</a
+          >
+        </nav>
+      </header>
+      <main>
+        <section class="context" aria-labelledby="title">
+          <div class="heading">
+            <div>
+              <h1 id="title">Replay report</h1>
+              <p class="scope">Saved synthetic replay</p>
+            </div>
+            <p id="result" class="result unknown">Result unavailable</p>
+          </div>
+          <div class="controls">
+            <div class="switch" role="group" aria-label="Run variant">
+              <span>Variant</span
+              ><button id="unsafe" type="button" aria-pressed="true">
+                Unsafe</button
+              ><button id="candidate" type="button" aria-pressed="false">
+                Candidate
+              </button>
+            </div>
+            <div class="actions">
+              <input
+                id="file"
+                class="visually-hidden"
+                type="file"
+                accept=".json,application/json"
+                tabindex="-1"
+                aria-label="Saved replay JSON"
+              /><button id="import" type="button">Import report</button
+              ><button id="download" type="button" disabled>
+                Download JSON
+              </button>
+            </div>
+          </div>
+          <p id="message" class="message" role="status" aria-live="polite"></p>
+          <dl id="identity"></dl>
+          <details id="scenario-details" hidden>
+            <summary>Scenario details</summary>
+            <div><p id="scenario-description" class="quiet"></p></div>
+          </details>
+        </section>
+        <div id="content" hidden>
+          <section aria-labelledby="state-title">
+            <div class="section-heading">
+              <h2 id="state-title">Resulting business state</h2>
+              <span id="state-variant" class="quiet"></span>
+            </div>
+            <div id="services" class="service-grid"></div>
+          </section>
+          <section class="panel" aria-labelledby="violations-title">
+            <div class="section-heading">
+              <h2 id="violations-title">Invariant checks</h2>
+            </div>
+            <div id="violations" class="violations"></div>
+          </section>
+          <section class="panel" aria-labelledby="claims-title">
+            <div class="section-heading">
+              <h2 id="claims-title">Worker claims</h2>
+            </div>
+            <div id="claims" class="claims"></div>
+          </section>
+          <section class="panel" aria-labelledby="timeline-title">
+            <div class="section-heading">
+              <h2 id="timeline-title">Logical timeline</h2>
+            </div>
+            <div class="timeline-bar">
+              <div id="timeline-counts" class="timeline-counts"></div>
+              <label
+                >Records<select id="filter">
+                  <option value="all">All records</option>
+                  <option value="attempt">Attempts</option>
+                  <option value="effect">Effects</option>
+                  <option value="fault">Faults</option>
+                </select></label
+              >
+            </div>
+            <div class="table-wrap">
+              <table aria-label="Logical timeline">
+                <thead>
+                  <tr>
+                    <th>Logical time</th>
+                    <th>Record</th>
+                    <th>Service / lead</th>
+                    <th>Detail</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody id="timeline"></tbody>
+              </table>
+            </div>
+            <p id="timeline-empty" class="empty" hidden></p>
+            <button id="more-timeline" class="more" type="button" hidden>
+              Show more records
+            </button>
+          </section>
+          <section class="details-grid">
+            <div class="panel" aria-labelledby="reduction-title">
+              <div class="section-heading">
+                <h2 id="reduction-title">Reduced scenario</h2>
+              </div>
+              <div id="reduction"></div>
+            </div>
+            <div class="panel">
+              <details class="raw">
+                <summary>Run details</summary>
+                <div>
+                  <pre
+                    id="run-details"
+                    tabindex="0"
+                    aria-label="Run metadata"
+                  ></pre>
+                </div>
+              </details>
+            </div>
+          </section>
+          <section class="panel">
+            <details class="raw">
+              <summary>Raw report JSON</summary>
+              <div>
+                <pre id="raw" tabindex="0" aria-label="Raw report JSON"></pre>
+              </div>
+            </details>
+          </section>
+        </div>
+        <noscript
+          ><p>
+            JavaScript is required to inspect this saved report. The
+            accompanying report.json contains the same evidence.
+          </p></noscript
+        >
+      </main>
+    </div>
+    <script id="report-data" type="application/json">
+      {
+  "schema_version": 1,
+  "scenario": {
+    "id": "lost-ack",
+    "title": "Lost CRM acknowledgment",
+    "description": "Unknown CRM outcome must be reconciled with a stable operation key, rather than blindly created again.",
+    "horizon": 24
+  },
+  "synthetic": true,
+  "runs": {
+    "unsafe": {
+      "variant": "M02_fresh_key_on_retry",
+      "engine": "deterministic-memory",
+      "passed": false,
+      "valid": true,
+      "unreached_faults": [],
+      "initial_state": {
+        "crm": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        },
+        "calendar": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        },
+        "notifications": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        }
+      },
+      "state": {
+        "crm": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "operator_tags": [],
+              "id": "crm-1",
+              "active": true
+            },
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "operator_tags": [],
+              "id": "crm-2",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 9,
+              "tick": 0,
+              "kind": "effect_committed",
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": null
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "operator_tags": [],
+                  "id": "crm-1",
+                  "active": true
+                }
+              ]
+            },
+            {
+              "seq": 12,
+              "tick": 1,
+              "kind": "effect_committed",
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": null
+              },
+              "effect": "create",
+              "before": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "operator_tags": [],
+                  "id": "crm-1",
+                  "active": true
+                }
+              ],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "operator_tags": [],
+                  "id": "crm-1",
+                  "active": true
+                },
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "operator_tags": [],
+                  "id": "crm-2",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 0,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "POST",
+              "key": null,
+              "seq": 7,
+              "outcome": "committed"
+            },
+            {
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 2,
+              "event_id": "E1",
+              "method": "POST",
+              "key": null,
+              "seq": 11,
+              "outcome": "committed"
+            }
+          ]
+        },
+        "calendar": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "crm_id": "crm-1",
+              "operator_tags": [],
+              "id": "calendar-1",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 15,
+              "tick": 1,
+              "kind": "effect_committed",
+              "service": "calendar",
+              "operation": "ensure_booking",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": null
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "crm_id": "crm-1",
+                  "operator_tags": [],
+                  "id": "calendar-1",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "calendar",
+              "operation": "ensure_booking",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "POST",
+              "key": null,
+              "seq": 14,
+              "outcome": "committed"
+            }
+          ]
+        },
+        "notifications": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "crm_id": "crm-1",
+              "booking_id": "calendar-1",
+              "operator_tags": [],
+              "id": "notifications-1",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 18,
+              "tick": 1,
+              "kind": "effect_committed",
+              "service": "notifications",
+              "operation": "queue_confirmation",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": null
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "crm_id": "crm-1",
+                  "booking_id": "calendar-1",
+                  "operator_tags": [],
+                  "id": "notifications-1",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "notifications",
+              "operation": "queue_confirmation",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "POST",
+              "key": null,
+              "seq": 17,
+              "outcome": "committed"
+            }
+          ]
+        }
+      },
+      "claims": [
+        {
+          "lead_id": "L1",
+          "version": 1,
+          "state": "complete",
+          "attempts": 4,
+          "next_due": 1,
+          "phase": "done",
+          "remaining": []
+        }
+      ],
+      "timeline": [
+        {
+          "seq": 1,
+          "tick": 0,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "FL04_S1",
+            "action": "deliver"
+          }
+        },
+        {
+          "seq": 2,
+          "tick": 0,
+          "kind": "fact_activated",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "event_id": "E1",
+            "type": "request"
+          }
+        },
+        {
+          "seq": 3,
+          "tick": 0,
+          "kind": "delivery_received",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "delivery_id": "D1",
+            "event_id": "E1"
+          }
+        },
+        {
+          "seq": 4,
+          "tick": 0,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "DUPLICATE",
+            "action": "deliver"
+          }
+        },
+        {
+          "seq": 5,
+          "tick": 0,
+          "kind": "fact_activated",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "event_id": "E1",
+            "type": "request"
+          }
+        },
+        {
+          "seq": 6,
+          "tick": 0,
+          "kind": "delivery_received",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "delivery_id": "D2",
+            "event_id": "E1"
+          }
+        },
+        {
+          "seq": 7,
+          "tick": 0,
+          "kind": "service_attempt",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "POST",
+            "key": null
+          }
+        },
+        {
+          "seq": 8,
+          "tick": 0,
+          "kind": "fault_injected",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "id": "FL04_F1",
+            "mode": "timeout_after_commit"
+          }
+        },
+        {
+          "seq": 9,
+          "tick": 0,
+          "kind": "effect_committed",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": null
+          }
+        },
+        {
+          "seq": 10,
+          "tick": 0,
+          "kind": "worker_checkpoint",
+          "lead_id": "L1",
+          "version": 1,
+          "service": "crm",
+          "detail": {
+            "state": "pending",
+            "next_due": 1
+          }
+        },
+        {
+          "seq": 11,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 2,
+            "event_id": "E1",
+            "method": "POST",
+            "key": null
+          }
+        },
+        {
+          "seq": 12,
+          "tick": 1,
+          "kind": "effect_committed",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": null
+          }
+        },
+        {
+          "seq": 13,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "crm",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "pending",
+            "phase": 1
+          }
+        },
+        {
+          "seq": 14,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "calendar",
+          "operation": "ensure_booking",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "POST",
+            "key": null
+          }
+        },
+        {
+          "seq": 15,
+          "tick": 1,
+          "kind": "effect_committed",
+          "service": "calendar",
+          "operation": "ensure_booking",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": null
+          }
+        },
+        {
+          "seq": 16,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "calendar",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "pending",
+            "phase": 2
+          }
+        },
+        {
+          "seq": 17,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "notifications",
+          "operation": "queue_confirmation",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "POST",
+            "key": null
+          }
+        },
+        {
+          "seq": 18,
+          "tick": 1,
+          "kind": "effect_committed",
+          "service": "notifications",
+          "operation": "queue_confirmation",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": null
+          }
+        },
+        {
+          "seq": 19,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "notifications",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "complete",
+            "phase": 3
+          }
+        },
+        {
+          "seq": 20,
+          "tick": 3,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE3",
+            "action": "wake"
+          }
+        },
+        {
+          "seq": 21,
+          "tick": 7,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE7",
+            "action": "wake"
+          }
+        },
+        {
+          "seq": 22,
+          "tick": 12,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE12",
+            "action": "wake"
+          }
+        }
+      ],
+      "violations": [
+        {
+          "class": "duplicate_effect",
+          "rule": "CRM_CONTACT_IDENTITY",
+          "service": "crm",
+          "lead_id": "L1",
+          "version": 1,
+          "expected": "one current record per business identity",
+          "actual": 2,
+          "witness": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "operator_tags": [],
+              "id": "crm-1",
+              "active": true
+            },
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "operator_tags": [],
+              "id": "crm-2",
+              "active": true
+            }
+          ]
+        }
+      ],
+      "unreached_tokens": [],
+      "restart_scope": "worker_instance_reopen; not OS process evidence",
+      "canonical_digest": "4fd11f4632b5c6bc82a29e306dcc4086346d55fce2f5d6b0184635b93ca3b308"
+    },
+    "candidate": {
+      "variant": "candidate",
+      "engine": "deterministic-memory",
+      "passed": true,
+      "valid": true,
+      "unreached_faults": [],
+      "initial_state": {
+        "crm": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        },
+        "calendar": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        },
+        "notifications": {
+          "items": [],
+          "effects": [],
+          "attempts": []
+        }
+      },
+      "state": {
+        "crm": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "operator_tags": [],
+              "id": "crm-1",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 9,
+              "tick": 0,
+              "kind": "effect_committed",
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": "crm:L1:1:upsert"
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "operator_tags": [],
+                  "id": "crm-1",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 0,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "PUT",
+              "key": "crm:L1:1:upsert",
+              "seq": 7,
+              "outcome": "committed"
+            },
+            {
+              "service": "crm",
+              "operation": "ensure_contact",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 2,
+              "event_id": "E1",
+              "method": "PUT",
+              "key": "crm:L1:1:upsert",
+              "seq": 11,
+              "outcome": "idempotency_hit"
+            }
+          ]
+        },
+        "calendar": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "crm_id": "crm-1",
+              "operator_tags": [],
+              "id": "calendar-1",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 15,
+              "tick": 1,
+              "kind": "effect_committed",
+              "service": "calendar",
+              "operation": "ensure_booking",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": "calendar:L1:1:upsert"
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "crm_id": "crm-1",
+                  "operator_tags": [],
+                  "id": "calendar-1",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "calendar",
+              "operation": "ensure_booking",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "PUT",
+              "key": "calendar:L1:1:upsert",
+              "seq": 14,
+              "outcome": "committed"
+            }
+          ]
+        },
+        "notifications": {
+          "items": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "display_name": "Alex Example",
+              "status": "open",
+              "crm_id": "crm-1",
+              "booking_id": "calendar-1",
+              "operator_tags": [],
+              "id": "notifications-1",
+              "active": true
+            }
+          ],
+          "effects": [
+            {
+              "seq": 18,
+              "tick": 1,
+              "kind": "effect_committed",
+              "service": "notifications",
+              "operation": "queue_confirmation",
+              "lead_id": "L1",
+              "version": 1,
+              "detail": {
+                "effect": "create",
+                "key": "notifications:L1:1:upsert"
+              },
+              "effect": "create",
+              "before": [],
+              "after": [
+                {
+                  "lead_id": "L1",
+                  "version": 1,
+                  "slot": "A",
+                  "display_name": "Alex Example",
+                  "status": "open",
+                  "crm_id": "crm-1",
+                  "booking_id": "calendar-1",
+                  "operator_tags": [],
+                  "id": "notifications-1",
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "attempts": [
+            {
+              "service": "notifications",
+              "operation": "queue_confirmation",
+              "lead_id": "L1",
+              "version": 1,
+              "tick": 1,
+              "occurrence": 1,
+              "event_id": "E1",
+              "method": "PUT",
+              "key": "notifications:L1:1:upsert",
+              "seq": 17,
+              "outcome": "committed"
+            }
+          ]
+        }
+      },
+      "claims": [
+        {
+          "lead_id": "L1",
+          "version": 1,
+          "state": "complete",
+          "attempts": 4,
+          "next_due": 1,
+          "phase": "done",
+          "remaining": []
+        }
+      ],
+      "timeline": [
+        {
+          "seq": 1,
+          "tick": 0,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "FL04_S1",
+            "action": "deliver"
+          }
+        },
+        {
+          "seq": 2,
+          "tick": 0,
+          "kind": "fact_activated",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "event_id": "E1",
+            "type": "request"
+          }
+        },
+        {
+          "seq": 3,
+          "tick": 0,
+          "kind": "delivery_received",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "delivery_id": "D1",
+            "event_id": "E1"
+          }
+        },
+        {
+          "seq": 4,
+          "tick": 0,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "DUPLICATE",
+            "action": "deliver"
+          }
+        },
+        {
+          "seq": 5,
+          "tick": 0,
+          "kind": "fact_activated",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "event_id": "E1",
+            "type": "request"
+          }
+        },
+        {
+          "seq": 6,
+          "tick": 0,
+          "kind": "delivery_received",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "delivery_id": "D2",
+            "event_id": "E1"
+          }
+        },
+        {
+          "seq": 7,
+          "tick": 0,
+          "kind": "service_attempt",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "PUT",
+            "key": "crm:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 8,
+          "tick": 0,
+          "kind": "fault_injected",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "id": "FL04_F1",
+            "mode": "timeout_after_commit"
+          }
+        },
+        {
+          "seq": 9,
+          "tick": 0,
+          "kind": "effect_committed",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": "crm:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 10,
+          "tick": 0,
+          "kind": "worker_checkpoint",
+          "lead_id": "L1",
+          "version": 1,
+          "service": "crm",
+          "detail": {
+            "state": "pending",
+            "next_due": 1
+          }
+        },
+        {
+          "seq": 11,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 2,
+            "event_id": "E1",
+            "method": "PUT",
+            "key": "crm:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 12,
+          "tick": 1,
+          "kind": "idempotency_hit",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "key": "crm:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 13,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "crm",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "pending",
+            "phase": 1
+          }
+        },
+        {
+          "seq": 14,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "calendar",
+          "operation": "ensure_booking",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "PUT",
+            "key": "calendar:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 15,
+          "tick": 1,
+          "kind": "effect_committed",
+          "service": "calendar",
+          "operation": "ensure_booking",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": "calendar:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 16,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "calendar",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "pending",
+            "phase": 2
+          }
+        },
+        {
+          "seq": 17,
+          "tick": 1,
+          "kind": "service_attempt",
+          "service": "notifications",
+          "operation": "queue_confirmation",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "occurrence": 1,
+            "event_id": "E1",
+            "method": "PUT",
+            "key": "notifications:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 18,
+          "tick": 1,
+          "kind": "effect_committed",
+          "service": "notifications",
+          "operation": "queue_confirmation",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "effect": "create",
+            "key": "notifications:L1:1:upsert"
+          }
+        },
+        {
+          "seq": 19,
+          "tick": 1,
+          "kind": "worker_checkpoint",
+          "service": "notifications",
+          "lead_id": "L1",
+          "version": 1,
+          "detail": {
+            "state": "complete",
+            "phase": 3
+          }
+        },
+        {
+          "seq": 20,
+          "tick": 3,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE3",
+            "action": "wake"
+          }
+        },
+        {
+          "seq": 21,
+          "tick": 7,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE7",
+            "action": "wake"
+          }
+        },
+        {
+          "seq": 22,
+          "tick": 12,
+          "kind": "schedule_action",
+          "detail": {
+            "token_id": "WAKE12",
+            "action": "wake"
+          }
+        }
+      ],
+      "violations": [],
+      "unreached_tokens": [],
+      "restart_scope": "worker_instance_reopen; not OS process evidence",
+      "canonical_digest": "393f48f446f00d76f8321250419718ac26169a30741a1e086499182d9d27038b"
+    }
+  },
+  "reduction": {
+    "status": "reproduced",
+    "signature": {
+      "class": "duplicate_effect",
+      "rule": "CRM_CONTACT_IDENTITY",
+      "service": "crm",
+      "lead_id": "L1",
+      "version": 1
+    },
+    "original_tokens": 5,
+    "remaining_tokens": 1,
+    "replay_pairs": 5,
+    "minimality": "deletion_minimal_within_optional_token_grammar",
+    "evidence": [
+      {
+        "pair": 1,
+        "accepted": true,
+        "tokens": [
+          "FL04_S1",
+          "DUPLICATE",
+          "WAKE3",
+          "WAKE7",
+          "WAKE12"
+        ],
+        "unsafe_digest": "4fd11f4632b5c6bc82a29e306dcc4086346d55fce2f5d6b0184635b93ca3b308",
+        "candidate_digest": "393f48f446f00d76f8321250419718ac26169a30741a1e086499182d9d27038b"
+      },
+      {
+        "pair": 2,
+        "accepted": true,
+        "tokens": [
+          "FL04_S1",
+          "WAKE3",
+          "WAKE7",
+          "WAKE12"
+        ],
+        "unsafe_digest": "91f5541264ca6b87b64ecc38629fc26cd004be1ccfe60ba19d879b93bd41612d",
+        "candidate_digest": "444b0a27346fd1955d2123cb3b56f68397f01a3621374c7b76d18bd17337a5c7"
+      },
+      {
+        "pair": 3,
+        "accepted": true,
+        "tokens": [
+          "FL04_S1",
+          "WAKE7",
+          "WAKE12"
+        ],
+        "unsafe_digest": "161146e1a2d37f1b31849992dfc67027a6b47c9e5e3dcf198fbc8f9595722b6c",
+        "candidate_digest": "8890c065a4124bd523b87c6ecc1cdd3dfb2195a82712411ab3b42b7f3b287bc5"
+      },
+      {
+        "pair": 4,
+        "accepted": true,
+        "tokens": [
+          "FL04_S1",
+          "WAKE12"
+        ],
+        "unsafe_digest": "04fc4383ed8f63a2242356f95f0392c1e012c311a616050705973ad94d869666",
+        "candidate_digest": "58aa36fbae39c85c1be866a11462a5e5ee4d6e542fa04c30ccea7a36b0012d14"
+      },
+      {
+        "pair": 5,
+        "accepted": true,
+        "tokens": [
+          "FL04_S1"
+        ],
+        "unsafe_digest": "7b97b3c350ee586a310cf46b2cc8394f0bd34c73153b6d047e8b1ebe4d0e515d",
+        "candidate_digest": "813c08b0b1bd0a2f45fa326044582e848fc6cd9ae9774614a6635c06205bc74c"
+      }
+    ],
+    "scenario": {
+      "schema_version": 1,
+      "id": "lost-ack",
+      "title": "Lost CRM acknowledgment",
+      "description": "Unknown CRM outcome must be reconciled with a stable operation key, rather than blindly created again.",
+      "seed": 61110,
+      "horizon": 24,
+      "facts": {
+        "E1": {
+          "event_id": "E1",
+          "lead_id": "L1",
+          "version": 1,
+          "display_name": "Alex Example",
+          "slot": "A",
+          "status": "open",
+          "type": "request"
+        }
+      },
+      "initial": {
+        "crm": [],
+        "calendar": [],
+        "notifications": []
+      },
+      "schedule": [
+        {
+          "token_id": "FL04_S1",
+          "action": "deliver",
+          "at": 0,
+          "event": "E1",
+          "delivery_id": "D1",
+          "pinned": true
+        }
+      ],
+      "faults": [
+        {
+          "id": "FL04_F1",
+          "service": "crm",
+          "operation": "ensure_contact",
+          "lead_id": "L1",
+          "version": 1,
+          "occurrence": 1,
+          "mode": "timeout_after_commit"
+        }
+      ],
+      "expected": {
+        "services": {
+          "crm": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "status": "open",
+              "operator_tags": [],
+              "display_name": "Alex Example"
+            }
+          ],
+          "calendar": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A"
+            }
+          ],
+          "notifications": [
+            {
+              "lead_id": "L1",
+              "version": 1,
+              "slot": "A",
+              "kind": "appointment_confirmation"
+            }
+          ]
+        },
+        "claims": [
+          {
+            "lead_id": "L1",
+            "version": 1,
+            "state": "complete"
+          }
+        ]
+      },
+      "mutations": [
+        {
+          "variant": "M02_fresh_key_on_retry",
+          "target": {
+            "class": "duplicate_effect",
+            "rule": "CRM_CONTACT_IDENTITY",
+            "service": "crm",
+            "lead_id": "L1",
+            "version": 1
+          }
+        }
+      ],
+      "reduction": {
+        "eligible": true,
+        "required_fault_ids": [
+          "FL04_F1"
+        ],
+        "pinned_facts": [
+          "E1"
+        ]
+      }
+    }
+  }
+}
+    </script>
+    <script>
+      (() => {
+        "use strict";
+        const MAX_BYTES = 2 * 1024 * 1024,
+          MAX_LIST = 2000,
+          MAX_NODES = 25000;
+        const SERVICES = ["crm", "calendar", "notifications"];
+        const NAMES = {
+          crm: "CRM",
+          calendar: "Calendar",
+          notifications: "Notifications",
+        };
+        const CLASSES = {
+          duplicate_effect: "Duplicate effect",
+          missing_effect: "Missing effect",
+          stale_overwrite: "Stale overwrite",
+          false_success: "False success",
+        };
+        const $ = (id) => document.getElementById(id);
+        const object = (value) =>
+          value !== null && typeof value === "object" && !Array.isArray(value);
+        const own = (value, key) =>
+          Object.prototype.hasOwnProperty.call(value, key);
+        const json = (value) => JSON.stringify(value, null, 2);
+        const text = (value) =>
+          value === undefined
+            ? "Not recorded"
+            : typeof value === "string"
+              ? value
+              : json(value);
+        function node(tag, value, className) {
+          const result = document.createElement(tag);
+          if (value !== undefined) result.textContent = text(value);
+          if (className) result.className = className;
+          return result;
+        }
+        let report = null,
+          selected = "unsafe",
+          visible = 100;
+        function validate(value) {
+          if (!object(value) || value.schema_version !== 1)
+            throw Error("schema_version must be 1.");
+          if (
+            !object(value.scenario) ||
+            typeof value.scenario.id !== "string" ||
+            !value.scenario.id ||
+            value.scenario.id.length > 256
+          )
+            throw Error(
+              "scenario.id must be a nonempty string of at most 256 characters.",
+            );
+          for (const key of ["title", "description"])
+            if (
+              own(value.scenario, key) &&
+              typeof value.scenario[key] !== "string"
+            )
+              throw Error("scenario." + key + " must be a string.");
+          if (
+            own(value.scenario, "horizon") &&
+            (!Number.isSafeInteger(value.scenario.horizon) ||
+              value.scenario.horizon < 0)
+          )
+            throw Error("scenario.horizon must be a nonnegative safe integer.");
+          if (
+            !object(value.runs) ||
+            !["unsafe", "candidate"].some((key) => object(value.runs[key]))
+          )
+            throw Error("runs must contain an unsafe or candidate run.");
+          const pending = [[value, 0]];
+          let count = 0;
+          while (pending.length) {
+            const [item, depth] = pending.pop();
+            if (++count > MAX_NODES || depth > 32)
+              throw Error(
+                "Report exceeds the supported shape or nesting limit.",
+              );
+            if (typeof item === "number" && !Number.isFinite(item))
+              throw Error("Report numbers must be finite.");
+            if (typeof item === "string" && item.length > 262144)
+              throw Error("A report string exceeds 256 KiB.");
+            if (Array.isArray(item)) {
+              if (item.length > MAX_LIST)
+                throw Error("A report list exceeds 2000 entries.");
+              item.forEach((child) => pending.push([child, depth + 1]));
+            } else if (object(item)) {
+              const keys = Object.keys(item);
+              if (keys.length > 200)
+                throw Error("A report object exceeds 200 fields.");
+              keys.forEach((key) => pending.push([item[key], depth + 1]));
+            }
+          }
+          function records(parent, key, path) {
+            if (!own(parent, key)) return;
+            if (
+              !Array.isArray(parent[key]) ||
+              parent[key].some((row) => !object(row))
+            )
+              throw Error(path + " must be a list of record objects.");
+          }
+          for (const key of ["unsafe", "candidate"]) {
+            if (!own(value.runs, key)) continue;
+            const run = value.runs[key];
+            if (!object(run))
+              throw Error("runs." + key + " must be an object.");
+            if (own(run, "passed") && typeof run.passed !== "boolean")
+              throw Error("runs." + key + ".passed must be a boolean.");
+            for (const field of ["violations", "claims", "timeline"])
+              records(run, field, key + "." + field);
+            if (run.passed === true && run.violations && run.violations.length)
+              throw Error(key + " declares a pass with recorded violations.");
+            if (own(run, "state") && !object(run.state))
+              throw Error(key + ".state must be an object.");
+            for (const service of SERVICES) {
+              if (!run.state || !own(run.state, service)) continue;
+              const state = run.state[service];
+              if (!object(state))
+                throw Error(key + ".state." + service + " must be an object.");
+              for (const field of ["items", "effects", "attempts"])
+                records(state, field, key + ".state." + service + "." + field);
+            }
+          }
+          if (
+            own(value, "reduction") &&
+            value.reduction !== null &&
+            !object(value.reduction)
+          )
+            throw Error("reduction must be an object or null.");
+          return value;
+        }
+        function message(value, error = false) {
+          $("message").textContent = value;
+          $("message").classList.toggle("error", error);
+        }
+        function fields(values) {
+          const dl = node("dl", undefined, "fields");
+          for (const [key, value] of values) {
+            dl.append(node("dt", key), node("dd", value));
+          }
+          return dl;
+        }
+        function preview(record) {
+          const values = [];
+          for (const [key, value] of Object.entries(record)) {
+            if (object(value) && Object.keys(value).length <= 12) {
+              for (const [inner, leaf] of Object.entries(value))
+                values.push([key + "." + inner, leaf]);
+            } else values.push([key, value]);
+          }
+          return values
+            .slice(0, 16)
+            .map(([key, value]) => [
+              key,
+              text(value).length > 600
+                ? text(value).slice(0, 600) + "…"
+                : value,
+            ]);
+        }
+        function recordList(rows, target, unavailable) {
+          if (!Array.isArray(rows)) {
+            target.append(node("p", unavailable, "empty"));
+            return;
+          }
+          if (!rows.length) {
+            target.append(node("p", "Inspected: no records.", "empty"));
+            return;
+          }
+          let shown = 0;
+          const container = node("div", undefined, "items"),
+            more = node("button", "Show more records", "more small");
+          more.type = "button";
+          function append() {
+            const end = Math.min(rows.length, shown + 8);
+            for (let index = shown; index < end; index++) {
+              const block = node("div", undefined, "record");
+              block.append(fields(preview(rows[index])));
+              const detail = node("details");
+              detail.append(node("summary", "Inspect full record"));
+              const pre = node("pre", json(rows[index]));
+              pre.tabIndex = 0;
+              pre.setAttribute("aria-label", "Full record JSON");
+              detail.append(pre);
+              block.append(detail);
+              container.append(block);
+            }
+            shown = end;
+            more.hidden = shown >= rows.length;
+            more.textContent =
+              "Show more records (" + shown + " of " + rows.length + " shown)";
+          }
+          more.addEventListener("click", append);
+          target.append(container, more);
+          append();
+        }
+        function serviceView(run) {
+          $("services").replaceChildren();
+          for (const service of SERVICES) {
+            const section = node("section", undefined, "service");
+            section.id = "state-" + service;
+            section.tabIndex = -1;
+            section.setAttribute("aria-label", NAMES[service] + " state");
+            const state = run.state && run.state[service];
+            section.append(node("h3", NAMES[service]));
+            if (!object(state))
+              section.append(node("p", "State unavailable.", "empty"));
+            else {
+              const current = Array.isArray(state.items)
+                ? state.items.filter((item) => item.active !== false) : undefined;
+              section.append(
+                node(
+                  "h4",
+                  Array.isArray(current)
+                    ? "Current items · " + current.length
+                    : "Current items",
+                ),
+              );
+              recordList(current, section, "Items were not inspected.");
+              const initial = run.initial_state && run.initial_state[service];
+              if (object(initial) && Array.isArray(initial.items)) {
+                const before = node("details");
+                before.append(node("summary", "Initial state"));
+                const body = node("div");
+                recordList(initial.items, body, "Initial items unavailable.");
+                before.append(body);
+                section.append(before);
+              }
+              for (const [field, title] of [
+                ["items", "All item history"],
+                ["effects", "Committed effect ledger"],
+                ["attempts", "Delivery attempts"],
+              ]) {
+                const details = node("details");
+                details.append(node("summary", title));
+                const body = node("div");
+                let loaded = false;
+                details.addEventListener("toggle", () => {
+                  if (details.open && !loaded) {
+                    recordList(state[field], body, title + " unavailable.");
+                    loaded = true;
+                  }
+                });
+                details.append(body);
+                section.append(details);
+              }
+            }
+            $("services").append(section);
+          }
+        }
+        function inspectionButton(label, action) {
+          const button = node("button", label, "small");
+          button.type = "button";
+          button.addEventListener("click", action);
+          return button;
+        }
+        function violationView(run) {
+          const target = $("violations");
+          target.replaceChildren();
+          if (!Array.isArray(run.violations)) {
+            target.append(node("p", "Invariant results unavailable.", "empty"));
+            return;
+          }
+          if (!run.violations.length) {
+            target.append(node("p", "No violations recorded.", "empty"));
+            return;
+          }
+          for (const violation of run.violations) {
+            const block = node("article", undefined, "violation");
+            block.append(
+              node(
+                "h3",
+                typeof violation.class === "string" &&
+                  own(CLASSES, violation.class)
+                  ? CLASSES[violation.class]
+                  : "Unsupported class: " + text(violation.class),
+              ),
+            );
+            block.append(
+              node(
+                "p",
+                [
+                  violation.rule,
+                  violation.service,
+                  violation.lead_id,
+                  own(violation, "version")
+                    ? "Version " + text(violation.version)
+                    : undefined,
+                ]
+                  .filter((v) => v !== undefined)
+                  .map(text)
+                  .join(" · "),
+                "quiet",
+              ),
+            );
+            const evidence = node("div", undefined, "evidence");
+            for (const [key, title] of [
+              ["expected", "Expected"],
+              ["actual", "Observed"],
+              ["witness", "Evidence"],
+            ]) {
+              const part = node("div");
+              part.append(node("h4", title), node("pre", text(violation[key])));
+              evidence.append(part);
+            }
+            block.append(evidence);
+            const links = node("div", undefined, "links");
+            if (SERVICES.includes(violation.service))
+              links.append(
+                inspectionButton(
+                  "Inspect " + NAMES[violation.service] + " state",
+                  () => $("state-" + violation.service).focus(),
+                ),
+              );
+            const sequence = object(violation.witness)
+              ? (violation.witness.seq ?? violation.witness.timeline_seq)
+              : null;
+            const index =
+              Number.isSafeInteger(sequence) && Array.isArray(run.timeline)
+                ? run.timeline.findIndex((row) => row.seq === sequence)
+                : -1;
+            if (index >= 0)
+              links.append(
+                inspectionButton("Inspect timeline record " + sequence, () => {
+                  $("filter").value = "all";
+                  visible = Math.max(visible, index + 1);
+                  timelineView();
+                  const row = $("timeline-row-" + index);
+                  row.querySelector("button").click();
+                  row.focus();
+                }),
+              );
+            if (links.childElementCount) block.append(links);
+            target.append(block);
+          }
+        }
+        function totals(run, field) {
+          let total = 0;
+          for (const key of SERVICES) {
+            const rows = run.state && run.state[key] && run.state[key][field];
+            if (!Array.isArray(rows)) return null;
+            total += rows.length;
+          }
+          return total;
+        }
+        function timelineView() {
+          const run = report.runs[selected],
+            rows = run.timeline,
+            target = $("timeline");
+          target.replaceChildren();
+          const filter = $("filter").value;
+          const matches = !Array.isArray(rows)
+            ? []
+            : rows.filter((row) => {
+                const kind =
+                  typeof row.kind === "string" ? row.kind.toLowerCase() : "";
+                return (
+                  filter === "all" ||
+                  (filter === "attempt"
+                    ? ["attempt", "delivery", "delivery_attempt", "delivery_received", "service_attempt"].includes(kind)
+                    : filter === "effect" ? ["effect", "effect_committed", "operator_edit"].includes(kind)
+                    : filter === "fault" ? ["fault", "fault_injected", "rate_limited", "unavailable", "worker_crash"].includes(kind)
+                    : kind === filter)
+                );
+              });
+          $("timeline-empty").hidden =
+            Array.isArray(rows) && matches.length > 0;
+          $("timeline-empty").textContent = !Array.isArray(rows)
+            ? "Timeline unavailable."
+            : rows.length && !matches.length
+              ? "No records match this filter. Select All records."
+              : "No timeline records recorded.";
+          for (const [index, row] of matches.slice(0, visible).entries()) {
+            const tr = node("tr");
+            tr.id = "timeline-row-" + index;
+            tr.tabIndex = -1;
+            const cells = [
+              text(row.tick),
+              text(row.kind),
+              [
+                row.service,
+                row.lead_id,
+                own(row, "version") ? "v" + text(row.version) : undefined,
+              ]
+                .filter((v) => v !== undefined)
+                .map(text)
+                .join(" · "),
+              text(row.detail),
+            ];
+            const labels = [
+              "Logical time",
+              "Record",
+              "Service / lead",
+              "Detail",
+            ];
+            cells.forEach((value, index) => {
+              const td = node("td");
+              td.setAttribute("data-label", labels[index]);
+              td.append(
+                node(
+                  "span",
+                  value.length > 500 ? value.slice(0, 500) + "…" : value,
+                ),
+              );
+              tr.append(td);
+            });
+            const control = node("td");
+            control.setAttribute("data-label", "Evidence");
+            const detail = node("tr", undefined, "record-detail");
+            detail.hidden = true;
+            const cell = node("td");
+            cell.colSpan = 5;
+            const pre = node("pre", json(row));
+            pre.tabIndex = 0;
+            pre.setAttribute("aria-label", "Timeline record JSON");
+            cell.append(pre);
+            detail.append(cell);
+            const button = inspectionButton("Inspect record", () => {
+              detail.hidden = !detail.hidden;
+              button.setAttribute("aria-expanded", String(!detail.hidden));
+            });
+            button.setAttribute("aria-expanded", "false");
+            control.append(button);
+            tr.append(control);
+            target.append(tr, detail);
+          }
+          $("more-timeline").hidden = matches.length <= visible;
+          $("more-timeline").textContent =
+            "Show more records (" +
+            Math.min(visible, matches.length) +
+            " of " +
+            matches.length +
+            " shown)";
+          const counts = $("timeline-counts");
+          counts.replaceChildren();
+          for (const [field, title] of [
+            ["attempts", "Service attempts"],
+            ["effects", "Committed effects"],
+          ]) {
+            const count = totals(run, field);
+            counts.append(
+              node(
+                "span",
+                title + ": " + (count === null ? "unavailable" : count),
+              ),
+            );
+          }
+        }
+        function download(value, suffix) {
+          const blob = new Blob([json(value) + "\n"], {
+              type: "application/json",
+            }),
+            url = URL.createObjectURL(blob);
+          const anchor = node("a");
+          const name =
+            report.scenario.id.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 80) ||
+            "replay";
+          anchor.href = url;
+          anchor.download = name + suffix + ".json";
+          document.body.append(anchor);
+          anchor.click();
+          anchor.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          message("JSON downloaded.");
+        }
+        function reductionView() {
+          const target = $("reduction");
+          target.replaceChildren();
+          const reduced = report.reduction;
+          if (!object(reduced)) {
+            target.append(node("p", "Reduction not run.", "empty"));
+            return;
+          }
+          const pairs = [
+            ["Status", reduced.status],
+            ["Original tokens", reduced.original_tokens],
+            ["Remaining tokens", reduced.remaining_tokens],
+            ["Replay pairs", reduced.replay_pairs],
+            ["Minimality", reduced.minimality],
+          ];
+          target.append(fields(pairs.filter((pair) => pair[1] !== undefined)));
+          if (own(reduced, "signature")) {
+            const details = node("details");
+            details.append(
+              node("summary", "Retained target signature"),
+              node("pre", json(reduced.signature)),
+            );
+            target.append(details);
+          }
+          if (object(reduced.scenario)) {
+            const details = node("details");
+            details.append(
+              node("summary", "Inspect reduced scenario"),
+              node("pre", json(reduced.scenario)),
+            );
+            target.append(details);
+            target.append(
+              inspectionButton("Download reduced scenario", () =>
+                download(reduced.scenario, "-reduced"),
+              ),
+            );
+          }
+        }
+        function render() {
+          const run = report.runs[selected],
+            name = selected === "unsafe" ? "Unsafe" : "Candidate";
+          $("content").hidden = false;
+          $("download").disabled = false;
+          for (const key of ["unsafe", "candidate"]) {
+            $(key).disabled = !object(report.runs[key]);
+            $(key).setAttribute("aria-pressed", String(key === selected));
+          }
+          $("state-variant").textContent = name;
+          const result = $("result");
+          result.className = "result";
+          const inspected = SERVICES.every(
+            (key) =>
+              object(run.state && run.state[key]) &&
+              ["items", "effects", "attempts"].every((field) =>
+                Array.isArray(run.state[key][field]),
+              ),
+          );
+          if (run.valid === false) {
+            result.textContent = name + " · Replay context incomplete";
+            result.classList.add("unknown");
+          } else if (!inspected) {
+            result.textContent = name + " · State inspection incomplete";
+            result.classList.add("unknown");
+          } else if (run.passed === true && Array.isArray(run.violations)) {
+            result.textContent = name + " · Checks pass";
+            result.classList.add("pass");
+          } else if (
+            run.passed === false &&
+            run.violations &&
+            run.violations.length
+          ) {
+            result.textContent = name + " · Violations";
+            result.classList.add("fail");
+          } else {
+            result.textContent = name + " · Result unavailable";
+            result.classList.add("unknown");
+          }
+          $("identity").replaceChildren();
+          for (const pair of [
+            ["Scenario", report.scenario.title || report.scenario.id],
+            ["Scenario ID", report.scenario.id],
+            ["Engine", run.engine],
+            ["Logical horizon", report.scenario.horizon],
+          ]) {
+            $("identity").append(
+              node("dt", pair[0]),
+              node("dd", text(pair[1])),
+            );
+          }
+          $("scenario-details").hidden = !report.scenario.description;
+          $("scenario-description").textContent =
+            report.scenario.description || "";
+          serviceView(run);
+          violationView(run);
+          $("claims").replaceChildren();
+          recordList(run.claims, $("claims"), "Worker claims unavailable.");
+          timelineView();
+          reductionView();
+          const metadata = Object.fromEntries(
+            Object.entries(run).filter(
+              ([key]) =>
+                !["state", "violations", "timeline", "claims"].includes(key),
+            ),
+          );
+          $("run-details").textContent = json(metadata);
+          $("raw").textContent = json(report);
+          document.title =
+            "Faultleaf · " + (report.scenario.title || report.scenario.id);
+        }
+        for (const key of ["unsafe", "candidate"])
+          $(key).addEventListener("click", () => {
+            if (report && object(report.runs[key])) {
+              selected = key;
+              visible = 100;
+              render();
+            }
+          });
+        $("filter").addEventListener("change", () => {
+          if (report) {
+            visible = 100;
+            timelineView();
+          }
+        });
+        $("more-timeline").addEventListener("click", () => {
+          visible += 100;
+          timelineView();
+        });
+        $("download").addEventListener("click", () => {
+          if (report) download(report, "-report");
+        });
+        $("import").addEventListener("click", () => $("file").click());
+        $("file").addEventListener("change", async () => {
+          const file = $("file").files[0];
+          if (!file) return;
+          try {
+            if (file.size > MAX_BYTES)
+              throw Error("File exceeds the 2 MiB limit.");
+            const next = validate(
+              JSON.parse((await file.text()).replace(/^\uFEFF/, "")),
+            );
+            report = next;
+            if (!object(report.runs[selected]))
+              selected = object(report.runs.unsafe) ? "unsafe" : "candidate";
+            visible = 100;
+            render();
+            message("Report imported.");
+          } catch (error) {
+            message("Could not load this report: " + error.message, true);
+          } finally {
+            $("file").value = "";
+          }
+        });
+        try {
+          report = validate(JSON.parse($("report-data").textContent));
+          selected = object(report.runs.unsafe) ? "unsafe" : "candidate";
+          render();
+        } catch (error) {
+          message("Could not load this report: " + error.message, true);
+        }
+      })();
+    </script>
+  </body>
+</html>

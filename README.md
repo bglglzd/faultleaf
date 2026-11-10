@@ -2,6 +2,10 @@
 
 Replay a synthetic lead-to-appointment workflow against CRM, calendar and notification sandboxes. Inspect committed effects, classify business-state failures, compare an unsafe workflow with a durable candidate and reduce a failing event sequence.
 
+[Saved replay demo](https://bglglzd.github.io/faultleaf/)
+
+![Candidate CRM, calendar and queue state after replay](docs/images/replay.png)
+
 ## Try a replay
 
 Python 3.11 or newer. From this checkout:
