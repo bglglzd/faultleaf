@@ -1,0 +1,83 @@
+schema_version: 1
+id: FL17
+title: Old pending confirmation races a new request
+description: Fencing must apply at execution of each external effect, not only when a task first entered
+  the inbox.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+  E2:
+    event_id: E2
+    lead_id: L1
+    version: 2
+    display_name: Alex Example
+    slot: B
+    status: open
+    type: request
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL17_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+- token_id: FL17_S2
+  action: deliver
+  after:
+    service: calendar
+    operation: ensure_booking
+    lead_id: L1
+    version: 1
+    point: effect_committed
+  event: E2
+  delivery_id: D2
+  pinned: true
+faults: []
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 2
+      status: open
+      operator_tags: []
+      display_name: Alex Example
+    calendar:
+    - lead_id: L1
+      version: 2
+      slot: B
+    notifications:
+    - lead_id: L1
+      version: 2
+      slot: B
+      kind: appointment_confirmation
+  claims:
+  - lead_id: L1
+    version: 2
+    state: complete
+  forbid_old_notifications: true
+mutations:
+- variant: M04_no_effect_execution_fence
+  target:
+    class: stale_overwrite
+    rule: LATEST_REQUEST_REVISION
+    service: notifications
+    lead_id: L1
+    version: 2
+reduction:
+  eligible: true
+  required_fault_ids: []
+  pinned_facts:
+  - E1
+  - E2

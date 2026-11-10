@@ -1,0 +1,88 @@
+schema_version: 1
+id: FL23
+title: Two distinct leads share a display name
+description: Natural-language text equality is not business identity; de-duplication must not merge unrelated
+  leads.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+  L2_E1:
+    event_id: L2_E1
+    lead_id: L2
+    version: 1
+    display_name: Alex Example
+    slot: B
+    status: open
+    type: request
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL23_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+- token_id: FL23_S2
+  action: deliver
+  at: 0
+  event: L2_E1
+  delivery_id: L2_D1
+  pinned: true
+faults: []
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 1
+      display_name: Alex Example
+      status: open
+    - lead_id: L2
+      version: 1
+      display_name: Alex Example
+      status: open
+    calendar:
+    - lead_id: L1
+      version: 1
+      slot: A
+    - lead_id: L2
+      version: 1
+      slot: B
+    notifications:
+    - lead_id: L1
+      version: 1
+      slot: A
+      kind: appointment_confirmation
+    - lead_id: L2
+      version: 1
+      slot: B
+      kind: appointment_confirmation
+  claims:
+  - lead_id: L1
+    state: complete
+  - lead_id: L2
+    state: complete
+mutations:
+- variant: M07_key_by_display_name
+  target:
+    class: missing_effect
+    rule: LEAD_IDENTITY_ISOLATION
+    service: crm
+    lead_id: L2
+    version: 1
+reduction:
+  eligible: true
+  required_fault_ids: []
+  pinned_facts:
+  - E1
+  - L2_E1

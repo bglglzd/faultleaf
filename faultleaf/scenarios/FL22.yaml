@@ -1,0 +1,69 @@
+schema_version: 1
+id: FL22
+title: Existing contact retains operator-owned data
+description: A later normal source request updates appointment data while preserving the operator's priority
+  status and tags.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+initial:
+  crm:
+  - lead_id: L1
+    version: 0
+    status: priority
+    operator_tags:
+    - priority-account
+    display_name: Alex Example
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL22_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+faults: []
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 1
+      status: priority
+      operator_tags:
+      - priority-account
+      display_name: Alex Example
+    calendar:
+    - lead_id: L1
+      version: 1
+      slot: A
+    notifications:
+    - lead_id: L1
+      version: 1
+      slot: A
+      kind: appointment_confirmation
+  claims:
+  - lead_id: L1
+    version: 1
+    state: complete
+mutations:
+- variant: M04_replace_whole_contact
+  target:
+    class: stale_overwrite
+    rule: OPERATOR_FIELDS_PRESERVED
+    service: crm
+    lead_id: L1
+    version: 1
+reduction:
+  eligible: true
+  required_fault_ids: []
+  pinned_facts:
+  - E1

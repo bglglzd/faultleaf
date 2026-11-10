@@ -1,0 +1,75 @@
+schema_version: 1
+id: FL03
+title: New delivery IDs for the same lead revision
+description: Dedupe by transport delivery ID alone cannot protect a resubmitted business revision.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+  E1_equivalent:
+    event_id: E1_equivalent
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL03_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+- token_id: FL03_S2
+  action: deliver
+  at: 0
+  event: E1_equivalent
+  delivery_id: D2
+  pinned: false
+faults: []
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 1
+      status: open
+      operator_tags: []
+      display_name: Alex Example
+    calendar:
+    - lead_id: L1
+      version: 1
+      slot: A
+    notifications:
+    - lead_id: L1
+      version: 1
+      slot: A
+      kind: appointment_confirmation
+  claims:
+  - lead_id: L1
+    version: 1
+    state: complete
+mutations:
+- variant: M01_no_business_revision_dedupe
+  target:
+    class: duplicate_effect
+    rule: CRM_CONTACT_IDENTITY
+    service: crm
+    lead_id: L1
+    version: 1
+reduction:
+  eligible: true
+  required_fault_ids: []
+  pinned_facts:
+  - E1

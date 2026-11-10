@@ -1,0 +1,70 @@
+schema_version: 1
+id: FL19
+title: Worker crashes after CRM commit, before checkpoint
+description: A process death can lose local knowledge of an external write; service idempotency and durable
+  reconciliation must agree.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL19_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+faults:
+- id: FL19_F1
+  service: crm
+  operation: ensure_contact
+  lead_id: L1
+  version: 1
+  occurrence: 1
+  mode: crash_worker_after_commit_before_checkpoint
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 1
+      status: open
+      operator_tags: []
+      display_name: Alex Example
+    calendar:
+    - lead_id: L1
+      version: 1
+      slot: A
+    notifications:
+    - lead_id: L1
+      version: 1
+      slot: A
+      kind: appointment_confirmation
+  claims:
+  - lead_id: L1
+    version: 1
+    state: complete
+mutations:
+- variant: M02_fresh_key_on_retry
+  target:
+    class: duplicate_effect
+    rule: CRM_CONTACT_IDENTITY
+    service: crm
+    lead_id: L1
+    version: 1
+reduction:
+  eligible: true
+  required_fault_ids:
+  - FL19_F1
+  pinned_facts:
+  - E1

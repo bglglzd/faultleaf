@@ -1,0 +1,69 @@
+schema_version: 1
+id: FL11
+title: Queue outage remains visible then recovers
+description: Permanent-for-window unavailability is an expected pending state; clearing it must resume
+  durable work without a new business event.
+seed: 61110
+horizon: 10
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL11_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+faults:
+- id: FL11_F1
+  service: notifications
+  operation: queue_confirmation
+  lead_id: L1
+  version: 1
+  occurrence: all
+  mode: unavailable_before_commit
+  through: 10
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 1
+      status: open
+      operator_tags: []
+      display_name: Alex Example
+    calendar:
+    - lead_id: L1
+      version: 1
+      slot: A
+    notifications: []
+  claims:
+  - lead_id: L1
+    version: 1
+    state: pending
+    remaining:
+    - notifications
+mutations:
+- variant: M03_partial_state_is_success
+  target:
+    class: false_success
+    rule: COMPLETE_REQUIRES_CURRENT_EFFECTS
+    service: notifications
+    lead_id: L1
+    version: 1
+reduction:
+  eligible: false
+  required_fault_ids:
+  - FL11_F1
+  pinned_facts:
+  - E1

@@ -1,0 +1,73 @@
+schema_version: 1
+id: FL14
+title: Operator closes after CRM commit
+description: An automated continuation must recheck the operator guard before creating a new appointment.
+seed: 61110
+horizon: 24
+facts:
+  E1:
+    event_id: E1
+    lead_id: L1
+    version: 1
+    display_name: Alex Example
+    slot: A
+    status: open
+    type: request
+  M_close2:
+    event_id: M_close2
+    lead_id: L1
+    version: 2
+    display_name: Alex Example
+    slot: A
+    status: closed
+    type: operator
+initial:
+  crm: []
+  calendar: []
+  notifications: []
+schedule:
+- token_id: FL14_S1
+  action: deliver
+  at: 0
+  event: E1
+  delivery_id: D1
+  pinned: true
+- token_id: FL14_S2
+  action: manual_status
+  after:
+    service: crm
+    operation: ensure_contact
+    lead_id: L1
+    version: 1
+    point: effect_committed
+  event: M_close2
+  pinned: true
+faults: []
+expected:
+  services:
+    crm:
+    - lead_id: L1
+      version: 2
+      status: closed
+      operator_tags: []
+      display_name: Alex Example
+    calendar: []
+    notifications: []
+  claims:
+  - lead_id: L1
+    version: 2
+    state: blocked
+mutations:
+- variant: M04_no_manual_fence
+  target:
+    class: stale_overwrite
+    rule: OPERATOR_STATUS_GUARD
+    service: crm
+    lead_id: L1
+    version: 2
+reduction:
+  eligible: false
+  required_fault_ids: []
+  pinned_facts:
+  - E1
+  - M_close2
