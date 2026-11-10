@@ -43,6 +43,10 @@ def main(argv=None):
     process = sub.add_parser("process-check", help="Terminate and replace a task-owned worker process over HTTP")
     process.add_argument("--scenario", choices=("FL19", "FL21"), default="FL19")
     process.add_argument("--out", type=Path, required=True)
+    n8n = sub.add_parser("n8n-check", help="Exercise six fixed-graph cases using a separately installed n8n CLI")
+    n8n.add_argument("--executable", default="n8n", help="n8n executable or task-owned wrapper; no shell string")
+    n8n.add_argument("--work-dir", type=Path, required=True, help="Parent for task-owned temporary n8n data")
+    n8n.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "list":
@@ -64,8 +68,11 @@ def main(argv=None):
             return 0 if report["runs"]["candidate"]["passed"] else 1
         if args.command == "suite":
             result = run_suite(http=args.http, repeat=args.repeat)
-        else:
+        elif args.command == "process-check":
             result = verify_process_recovery(args.scenario)
+        else:
+            from .n8n_check import check_n8n
+            result = check_n8n(args.executable, args.work_dir)
         _json_file(result, args.out)
         print(canonical({"passed": result["passed"], "output": str(args.out)}))
         return 0 if result["passed"] else 1

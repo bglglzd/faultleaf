@@ -14,7 +14,7 @@ def run_suite(*, http=False, repeat=False):
         for mutation in scenario["mutations"]:
             unsafe = replay(scenario, mutation["variant"], http=http)
             mutations.append({"variant": mutation["variant"], "target": mutation["target"],
-                              "detected": mutation["target"] in [signature(v) for v in unsafe["violations"]],
+                              "detected": unsafe["valid"] and mutation["target"] in [signature(v) for v in unsafe["violations"]],
                               "digest": unsafe["canonical_digest"], "violations": unsafe["violations"]})
         deterministic = not repeat or candidate["canonical_digest"] == replay(scenario, http=http)["canonical_digest"]
         reached_faults = {e["detail"]["id"] for e in candidate["timeline"] if e["kind"] == "fault_injected"}

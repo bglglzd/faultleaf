@@ -25,6 +25,7 @@ class Engine:
         self.lock = threading.RLock()
         self.stores = open_stores(stack, directory, scenario["initial"], scenario.get("faults", []),
                                   self.record, self.barrier)
+        self.initial_state = {service: store.snapshot() for service, store in self.stores.items()}
         if http:
             sandbox = stack.enter_context(Sandbox(self.stores))
             self.transport = HTTPTransport(sandbox.urls)
@@ -96,11 +97,16 @@ class Engine:
             else:
                 raise ReplayError("Replay exceeded per-tick operation bound")
         unfired = [s["token_id"] for s in self.scenario["schedule"] if s["token_id"] not in self.fired]
+        reached = {e["detail"]["id"] for e in self.timeline if e["kind"] == "fault_injected"}
+        unreached_faults = [f["id"] for f in self.scenario["faults"] if f["id"] not in reached]
+        valid = not unfired and not unreached_faults
         state = self.transport.snapshot()
         claims = self.worker.claims()
         violations = evaluate(self.scenario, state, claims, self.timeline)
-        result = {"variant": self.variant, "engine": self.transport.name, "passed": not violations,
-                  "state": state, "claims": claims, "timeline": self.timeline, "violations": violations,
+        result = {"variant": self.variant, "engine": self.transport.name, "passed": valid and not violations,
+                  "valid": valid, "unreached_faults": unreached_faults,
+                  "initial_state": self.initial_state, "state": state, "claims": claims,
+                  "timeline": self.timeline, "violations": violations,
                   "unreached_tokens": unfired, "restart_scope": "worker_instance_reopen; not OS process evidence"}
         result["canonical_digest"] = hashlib.sha256(canonical(result).encode()).hexdigest()
         return result

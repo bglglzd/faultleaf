@@ -40,7 +40,7 @@ def reduce_failure(scenario, variant=None, target=None, max_pairs=128):
         for run in (unsafe, repaired):
             reached.append({t["detail"]["id"] for t in run["timeline"] if t["kind"] == "fault_injected"})
         pinned = {s["token_id"] for s in candidate["schedule"] if s.get("pinned")}
-        okay = (target in [signature(v) for v in unsafe["violations"]] and repaired["passed"]
+        okay = (unsafe["valid"] and target in [signature(v) for v in unsafe["violations"]] and repaired["passed"]
                 and all(required <= ids for ids in reached)
                 and not pinned.intersection(unsafe["unreached_tokens"])
                 and not pinned.intersection(repaired["unreached_tokens"]))

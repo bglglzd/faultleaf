@@ -36,6 +36,13 @@ class Store:
         self.faults = [deepcopy(f) for f in faults if f["service"] == service]
         self.lock = threading.RLock()
         self.db = sqlite3.connect(str(path), check_same_thread=False)
+        try:
+            self._initialize(initial)
+        except BaseException:
+            self.db.close()
+            raise
+
+    def _initialize(self, initial):
         self.db.execute("CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT)")
         row = self.db.execute("SELECT body FROM state WHERE id=1").fetchone()
         if row:
@@ -48,7 +55,7 @@ class Store:
                 new.setdefault("operator_tags", [])
                 new.setdefault("status", "open")
                 new.setdefault("slot", "A")
-                new.update(id=f"{service}-{len(self.data['items']) + 1}", active=True)
+                new.update(id=f"{self.service}-{len(self.data['items']) + 1}", active=True)
                 self.data["items"].append(new)
             self._save()
 
@@ -96,6 +103,9 @@ class Store:
                                  and a["operation"] == operation for a in self.data["attempts"])
             attempt = {**meta, "occurrence": occurrence, "event_id": event, "method": method, "key": key}
             self.data["attempts"].append(attempt)
+            received = self.record("service_attempt", **meta,
+                                   detail={"occurrence": occurrence, "event_id": event, "method": method, "key": key})
+            attempt["seq"] = received["seq"]
             signature = canonical([lead, version, operation])
             for candidate in self.faults:
                 if (candidate["lead_id"] == lead and candidate["version"] == version

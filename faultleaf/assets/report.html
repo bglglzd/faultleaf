@@ -777,7 +777,7 @@
               <label
                 >Records<select id="filter">
                   <option value="all">All records</option>
-                  <option value="attempt">Delivery attempts</option>
+                  <option value="attempt">Attempts</option>
                   <option value="effect">Effects</option>
                   <option value="fault">Faults</option>
                 </select></label
@@ -1047,16 +1047,28 @@
             if (!object(state))
               section.append(node("p", "State unavailable.", "empty"));
             else {
+              const current = Array.isArray(state.items)
+                ? state.items.filter((item) => item.active !== false) : undefined;
               section.append(
                 node(
                   "h4",
-                  Array.isArray(state.items)
-                    ? "Current items · " + state.items.length
+                  Array.isArray(current)
+                    ? "Current items · " + current.length
                     : "Current items",
                 ),
               );
-              recordList(state.items, section, "Items were not inspected.");
+              recordList(current, section, "Items were not inspected.");
+              const initial = run.initial_state && run.initial_state[service];
+              if (object(initial) && Array.isArray(initial.items)) {
+                const before = node("details");
+                before.append(node("summary", "Initial state"));
+                const body = node("div");
+                recordList(initial.items, body, "Initial items unavailable.");
+                before.append(body);
+                section.append(before);
+              }
               for (const [field, title] of [
+                ["items", "All item history"],
                 ["effects", "Committed effect ledger"],
                 ["attempts", "Delivery attempts"],
               ]) {
@@ -1186,7 +1198,9 @@
                 return (
                   filter === "all" ||
                   (filter === "attempt"
-                    ? ["attempt", "delivery", "delivery_attempt"].includes(kind)
+                    ? ["attempt", "delivery", "delivery_attempt", "delivery_received", "service_attempt"].includes(kind)
+                    : filter === "effect" ? ["effect", "effect_committed", "operator_edit"].includes(kind)
+                    : filter === "fault" ? ["fault", "fault_injected", "rate_limited", "unavailable", "worker_crash"].includes(kind)
                     : kind === filter)
                 );
               });
@@ -1261,7 +1275,7 @@
           const counts = $("timeline-counts");
           counts.replaceChildren();
           for (const [field, title] of [
-            ["attempts", "Recorded attempts"],
+            ["attempts", "Service attempts"],
             ["effects", "Committed effects"],
           ]) {
             const count = totals(run, field);
@@ -1347,7 +1361,10 @@
                 Array.isArray(run.state[key][field]),
               ),
           );
-          if (!inspected) {
+          if (run.valid === false) {
+            result.textContent = name + " · Replay context incomplete";
+            result.classList.add("unknown");
+          } else if (!inspected) {
             result.textContent = name + " · State inspection incomplete";
             result.classList.add("unknown");
           } else if (run.passed === true && Array.isArray(run.violations)) {

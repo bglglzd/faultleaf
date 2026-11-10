@@ -25,6 +25,13 @@ def evaluate(scenario, state, claims, timeline):
     leads = {f["lead_id"] for f in scenario["facts"].values()}
     isolated = len(leads) > 1
     for service in SERVICES:
+        current_groups = defaultdict(list)
+        for row in active[service]:
+            current_groups[(row["lead_id"], row["version"])].append(row)
+        for (lead, version), rows in current_groups.items():
+            if len(rows) > 1:
+                add("duplicate_effect", IDENTITY_RULES[service], service, lead, version,
+                    "one current record per business identity", len(rows), rows)
         groups = defaultdict(list)
         for effect in state[service]["effects"]:
             if effect.get("effect") in ("create", "update") and effect.get("operation") != "operator_edit":
@@ -86,6 +93,27 @@ def evaluate(scenario, state, claims, timeline):
                     and effect["seq"] > delivery["seq"] and effect.get("effect") in ("create", "update")):
                 add("stale_overwrite", "LATEST_REQUEST_REVISION", "notifications", delivery["lead_id"],
                     delivery["version"], "no obsolete confirmation after newer intent", effect, delivery)
+
+    # A later successful revision cannot erase an earlier false completion claim.
+    checkpoints = [e for e in timeline if e["kind"] == "worker_checkpoint"
+                   and e.get("detail", {}).get("state") == "complete"]
+    for checkpoint in checkpoints:
+        lead, version = checkpoint["lead_id"], checkpoint["version"]
+        observed = {}
+        for service in SERVICES:
+            prior = [e for e in state[service]["effects"] if e["lead_id"] == lead and e["seq"] < checkpoint["seq"]]
+            rows = (max(prior, key=lambda e: e["seq"])["after"] if prior else
+                    [r for r in scenario["initial"][service] if r["lead_id"] == lead])
+            observed[service] = [r for r in rows if r["version"] == version and r.get("active", True)]
+            if not observed[service]:
+                add("false_success", "COMPLETE_REQUIRES_CURRENT_EFFECTS", service, lead, version,
+                    "current committed state at the completion checkpoint", rows, checkpoint)
+        for service, field, upstream in (("calendar", "crm_id", "crm"),
+                                         ("notifications", "booking_id", "calendar")):
+            for row in observed[service]:
+                if not any(r.get("id") == row.get(field) for r in observed[upstream]):
+                    add("false_success", "COMPLETE_REQUIRES_CURRENT_EFFECTS", service, lead, version,
+                        "valid cross-service reference at completion", row, checkpoint)
 
     for claim in claims:
         if claim["state"] != "complete":

@@ -86,6 +86,24 @@ class DomainTests(unittest.TestCase):
         candidate["state"]["calendar"]["items"][0]["crm_id"] = "nonexistent"
         violations = evaluate(scenario, candidate["state"], candidate["claims"], candidate["timeline"])
         self.assertTrue(any(v["rule"] == "CROSS_SERVICE_REFERENCE" for v in violations))
+        candidate = replay(scenario)
+        duplicate = deepcopy(candidate["state"]["crm"]["items"][0])
+        duplicate["id"] = "another-contact"
+        candidate["state"]["crm"]["items"].append(duplicate)
+        violations = evaluate(scenario, candidate["state"], candidate["claims"], candidate["timeline"])
+        self.assertTrue(any(v["class"] == "duplicate_effect" and v["service"] == "crm" for v in violations))
+
+    def test_later_correct_revision_cannot_hide_earlier_false_success(self):
+        scenario = fixture("FL09")
+        reschedule = fixture("FL16")
+        scenario["facts"] = reschedule["facts"]
+        scenario["expected"] = reschedule["expected"]
+        scenario["schedule"].append({"token_id": "LATER", "action": "deliver", "at": 5,
+                                     "event": "E2", "delivery_id": "D2", "pinned": True})
+        unsafe = replay(scenario, "M03_partial_state_is_success")
+        self.assertFalse(unsafe["passed"])
+        self.assertTrue(any(v["class"] == "false_success" and v["version"] == 1 for v in unsafe["violations"]))
+        self.assertTrue(replay(scenario)["passed"])
 
     def test_reducer_removes_noise_retains_duplicate_and_exact_signature(self):
         scenario = fixture("FL02")
@@ -110,11 +128,23 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(reduced["scenario"]["faults"], scenario["faults"])
         self.assertEqual(reduced["scenario"]["facts"], scenario["facts"])
 
+    def test_unreached_schedule_or_fault_cannot_pass_as_replayed(self):
+        scenario = fixture("FL01")
+        scenario["schedule"].append({"token_id": "NEVER", "action": "restart_worker", "pinned": False,
+            "after": {"service": "calendar", "operation": "ensure_booking", "lead_id": "L1",
+                      "version": 1, "point": "rate_limited"}})
+        result = replay(scenario)
+        self.assertEqual(result["violations"], [])
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["unreached_tokens"], ["NEVER"])
+
 
 class InputTests(unittest.TestCase):
     def test_rejects_alias_tags_duplicate_keys_and_deep_yaml(self):
         for text in ("a: &x []\nb: *x", "!!python/object:os.system {}", "id: one\nid: two",
-                     "a: " + "[" * 30 + "]" * 30):
+                     "a: " + "[" * 30 + "]" * 30, "date: 2026-11-10", "name: '\ud800'",
+                     "horizon: " + "9" * 5000):
             with self.subTest(text=text[:40]), self.assertRaises(ScenarioError):
                 loads(text)
 
@@ -122,6 +152,10 @@ class InputTests(unittest.TestCase):
         from faultleaf.scenario import validate
         for mutate in (lambda s: s["schedule"][0].update(event="missing"),
                        lambda s: s.update(horizon=True),
+                       lambda s: s["expected"].update(services=[]),
+                       lambda s: s["expected"].pop("services"),
+                       lambda s: s["facts"]["E1"].pop("status"),
+                       lambda s: s["schedule"][0].update(pinned=False),
                        lambda s: s["facts"]["E1"].update(lead_id="../../file")):
             scenario = fixture("FL01")
             mutate(scenario)

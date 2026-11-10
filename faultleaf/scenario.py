@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from pathlib import Path
+import math
 import re
 
 import yaml
@@ -64,8 +65,38 @@ def _objects(value, label, maximum):
     return value
 
 
+def _data_tree(value):
+    pending, count = [(value, 0)], 0
+    while pending:
+        item, depth = pending.pop()
+        count += 1
+        if depth > 24 or count > 20000:
+            raise ScenarioError("Scenario data shape exceeds the supported bounds")
+        if isinstance(item, str):
+            try:
+                item.encode("utf-8")
+            except UnicodeError as exc:
+                raise ScenarioError("Scenario strings must be valid UTF-8") from exc
+        elif item is None or type(item) in (int, bool):
+            continue
+        elif isinstance(item, float) and math.isfinite(item):
+            continue
+        elif isinstance(item, list):
+            if len(item) > 2000:
+                raise ScenarioError("Scenario lists exceed 2000 entries")
+            pending.extend((child, depth + 1) for child in item)
+        elif isinstance(item, dict):
+            if len(item) > 200 or any(not isinstance(k, str) for k in item):
+                raise ScenarioError("Scenario objects require at most 200 string fields")
+            pending.extend((child, depth + 1) for pair in item.items() for child in pair)
+        else:
+            raise ScenarioError("Scenario values must be finite JSON-compatible data")
+
+
 def validate(document):
-    if not isinstance(document, dict) or document.get("schema_version") != 1:
+    _data_tree(document)
+    if (not isinstance(document, dict) or type(document.get("schema_version")) is not int
+            or document["schema_version"] != 1):
         raise ScenarioError("Expected scenario schema_version: 1")
     data = deepcopy(document)
     _identifier(data.get("id"), "id")
@@ -88,7 +119,7 @@ def validate(document):
         _integer(fact.get("version"), "version", 1_000_000)
         if fact.get("type") not in ("request", "operator"):
             raise ScenarioError("fact type must be request or operator")
-        if fact.get("status", "open") not in ("open", "priority", "closed"):
+        if fact.get("status") not in ("open", "priority", "closed"):
             raise ScenarioError("Unknown status")
         for key in ("slot", "display_name"):
             if not isinstance(fact.get(key), str) or len(fact[key]) > 160:
@@ -113,6 +144,23 @@ def validate(document):
         else:
             if not isinstance(step["after"], dict) or not step["after"]:
                 raise ScenarioError("after must be a nonempty semantic barrier")
+            anchor = step["after"]
+            if not set(anchor) <= {"service", "operation", "lead_id", "version", "point", "event_id"}:
+                raise ScenarioError("Unknown semantic barrier field")
+            if anchor.get("point") not in ("receipt_durable", "worker_completed", "effect_committed", "rate_limited", "unavailable"):
+                raise ScenarioError("Unknown semantic barrier point")
+            if anchor["point"] in ("effect_committed", "rate_limited", "unavailable"):
+                if anchor.get("service") not in SERVICES or anchor.get("operation") != OPERATIONS[anchor["service"]]:
+                    raise ScenarioError("Service barrier requires its semantic operation")
+                _identifier(anchor.get("lead_id"), "barrier lead")
+                _integer(anchor.get("version"), "barrier version", 1_000_000)
+            if anchor["point"] == "receipt_durable" and anchor.get("event_id") not in facts:
+                raise ScenarioError("Receipt barrier requires a known event")
+            if anchor["point"] == "worker_completed":
+                _identifier(anchor.get("lead_id"), "barrier lead")
+                _integer(anchor.get("version"), "barrier version", 1_000_000)
+        if type(step.get("pinned", False)) is not bool:
+            raise ScenarioError("pinned must be a boolean")
         if step["action"] in ("deliver", "manual_status"):
             if step.get("event") not in facts:
                 raise ScenarioError("Schedule references an unknown fact")
@@ -142,27 +190,43 @@ def validate(document):
     expected = data.get("expected")
     if not isinstance(initial, dict) or not isinstance(expected, dict):
         raise ScenarioError("initial and expected must be objects")
+    if not isinstance(expected.get("services"), dict) or set(expected["services"]) != set(SERVICES):
+        raise ScenarioError("expected.services must define all three services")
     for service in SERVICES:
         for row in _objects(initial.get(service, []), "initial service rows", 32):
             _identifier(row.get("lead_id"), "initial lead")
             _integer(row.get("version"), "initial version", 1_000_000)
-        _objects(expected.get("services", {}).get(service, []), "expected service rows", 32)
-    _objects(expected.get("claims", []), "expected claims", 32)
+        for row in _objects(expected["services"][service], "expected service rows", 32):
+            _identifier(row.get("lead_id"), "expected lead")
+            _integer(row.get("version"), "expected version", 1_000_000)
+    for claim in _objects(expected.get("claims"), "expected claims", 32):
+        _identifier(claim.get("lead_id"), "expected claim lead")
+        if claim.get("state") not in ("pending", "complete", "blocked"):
+            raise ScenarioError("Unknown expected worker state")
+        if "version" in claim:
+            _integer(claim["version"], "expected claim version", 1_000_000)
     for mutation in _objects(data.get("mutations", []), "mutations", 8):
         if mutation.get("variant") not in VARIANTS - {"candidate"} or not isinstance(mutation.get("target"), dict):
             raise ScenarioError("Unknown mutation or missing target signature")
     reduction = data.setdefault("reduction", {"eligible": False, "required_fault_ids": [], "pinned_facts": []})
     if not isinstance(reduction, dict) or not set(reduction.get("required_fault_ids", [])) <= seen:
         raise ScenarioError("Reduction requires an unknown fault")
+    if not isinstance(reduction.get("pinned_facts", []), list) or not set(reduction.get("pinned_facts", [])) <= set(facts):
+        raise ScenarioError("Reduction pins an unknown fact")
+    anchors = {s.get("event") for s in data["schedule"] if s.get("pinned")}
+    if not set(reduction.get("pinned_facts", [])) <= anchors:
+        raise ScenarioError("Each pinned fact requires a pinned activation token")
     return data
 
 
 def loads(text):
-    if not isinstance(text, str) or len(text.encode("utf-8")) > MAX_BYTES:
-        raise ScenarioError("Scenario exceeds 512 KiB")
     try:
+        if not isinstance(text, str) or len(text.encode("utf-8")) > MAX_BYTES:
+            raise ScenarioError("Scenario exceeds 512 KiB")
         return validate(yaml.load(text, Loader=_Loader))
-    except (yaml.YAMLError, RecursionError, TypeError) as exc:
+    except ScenarioError:
+        raise
+    except (yaml.YAMLError, RecursionError, TypeError, ValueError, UnicodeError) as exc:
         raise ScenarioError(f"Invalid YAML: {type(exc).__name__}") from exc
 
 
