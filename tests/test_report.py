@@ -176,6 +176,10 @@ class ReportTests(unittest.TestCase):
         report["metadata"] = {str(i): i for i in range(201)}
         with self.assertRaisesRegex(ValueError, "200 viewer fields"):
             render_report(report)
+        report = example_report()
+        report["metadata"] = chr(0x1F642) * 131073
+        with self.assertRaisesRegex(ValueError, "256 KiB viewer limit"):
+            render_report(report)
 
     def test_missing_optional_evidence_still_produces_a_viewable_document(self):
         report = {"schema_version": 1, "scenario": {"id": "partial"}, "runs": {"candidate": {}}}

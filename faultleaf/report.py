@@ -27,7 +27,7 @@ def _encoded(report: dict) -> str:
             if len(value) > 200:
                 raise ValueError("Report object exceeds 200 viewer fields")
             pending.extend((child, depth + 1) for child in value.values())
-        elif isinstance(value, str) and len(value) > 262144:
+        elif isinstance(value, str) and len(value.encode("utf-16-le")) // 2 > 262144:
             raise ValueError("Report string exceeds the 256 KiB viewer limit")
     return raw
 
