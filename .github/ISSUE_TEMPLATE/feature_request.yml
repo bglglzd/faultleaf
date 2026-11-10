@@ -1,0 +1,10 @@
+name: Feature request
+description: Describe a concrete integration failure or missing behavior
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User journey and missing behavior
+      description: Describe the current result, needed result and a synthetic example.
+    validations:
+      required: true

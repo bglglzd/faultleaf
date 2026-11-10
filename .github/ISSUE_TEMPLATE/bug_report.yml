@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible replay or installation failure
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Command, synthetic scenario, expected and actual business state. Remove credentials and personal data.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment
+      description: Faultleaf release/commit, Python, operating system, optional n8n version.
+    validations:
+      required: true
